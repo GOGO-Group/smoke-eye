@@ -140,6 +140,7 @@ function toggleStickyVisibility() {
 function setSize(preset) {
   if (!mainWindow) return;
   const { w, h } = SIZES[preset];
+  if (mainWindow.isMaximized()) mainWindow.unmaximize();
   mainWindow.setSize(w, h);
 }
 
@@ -361,6 +362,39 @@ ipcMain.handle('open-file-dialog', async () => {
   });
   if (result.canceled || result.filePaths.length === 0) return null;
   return result.filePaths;
+});
+
+// ---------- Window size IPC (for renderer-driven resize) ----------
+ipcMain.handle('set-window-size', (_e, { w, h }) => {
+  if (!mainWindow) return;
+  if (mainWindow.isMaximized()) mainWindow.unmaximize();
+  mainWindow.setSize(w, h);
+  return { ok: true };
+});
+
+// ---------- Read file for download ----------
+ipcMain.handle('read-file', async (_e, filePath) => {
+  try {
+    const data = fs.readFileSync(filePath);
+    return { ok: true, data: data.toString('base64'), name: path.basename(filePath) };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+});
+
+// ---------- Save file dialog ----------
+ipcMain.handle('save-file-dialog', async (_e, { name, data }) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: name,
+    filters: [{ name: 'All Files', extensions: ['*'] }]
+  });
+  if (result.canceled || !result.filePath) return { ok: false };
+  try {
+    fs.writeFileSync(result.filePath, Buffer.from(data, 'base64'));
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
 });
 
 // ---------- Sticky window IPC ----------

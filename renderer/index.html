@@ -41,11 +41,21 @@
         </div>
 
         <div>
-          <label class="block text-xs text-zinc-400 mb-1">Upload Files (CV, Job Description, Support Material…)</label>
-          <button id="file-add-btn"
-                  class="w-full px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-md text-sm hover:bg-zinc-700 transition">
-            + Add File
-          </button>
+          <label class="block text-xs text-zinc-400 mb-1">Upload Files</label>
+          <div class="flex gap-2 mb-2">
+            <select id="file-type-select"
+                    class="px-2 py-2 bg-zinc-950 border border-zinc-600 rounded-md text-sm">
+              <option value="CV">CV</option>
+              <option value="Job Description">Job Description</option>
+              <option value="Support Material">Support Material</option>
+              <option value="Reference">Reference</option>
+              <option value="Other">Other</option>
+            </select>
+            <button id="file-add-btn"
+                    class="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-md text-sm hover:bg-zinc-700 transition">
+              + Add File
+            </button>
+          </div>
           <ul id="file-list" class="mt-2 space-y-1 max-h-36 overflow-y-auto"></ul>
         </div>
 
@@ -101,6 +111,10 @@
       <span class="font-semibold">Interviewer</span>
       <button id="iv-sticky-btn" title="Show sticky notes"
               class="px-2 py-1 border border-zinc-600 rounded hover:bg-zinc-700 text-sm">&#128204;</button>
+      <button id="iv-sticky-prev" title="Previous sticky (Alt+Left)" class="px-2 py-1 border border-zinc-600 rounded hover:bg-zinc-700 text-sm" style="display:none">&#8249;</button>
+      <button id="iv-sticky-next" title="Next sticky (Alt+Right)" class="px-2 py-1 border border-zinc-600 rounded hover:bg-zinc-700 text-sm" style="display:none">&#8250;</button>
+      <!-- Screen capture button -->
+      <button id="iv-capture-btn" title="Capture screen area" class="px-2 py-1 border border-zinc-600 rounded hover:bg-zinc-700 text-sm">&#9991;</button>
       <span id="iv-status" class="status off ml-auto flex items-center gap-1 text-xs px-2 py-1 rounded" title="Connection status">
         <span class="status-icon">&#128279;</span>
         <span class="status-text hidden sm:inline">Listening &mdash; waiting&hellip;</span>
@@ -110,6 +124,12 @@
         <span class="badge-text hidden sm:inline">New message</span>
       </span>
     </header>
+
+    <!-- In-app notification for support messages -->
+    <div id="iv-msg-toast" class="hidden fixed top-12 left-1/2 -translate-x-1/2 z-50 bg-zinc-700 border border-amber-500 rounded-xl shadow-2xl px-4 py-3 max-w-sm w-full pointer-events-none">
+      <div class="text-xs text-amber-400 font-semibold mb-1">Support says:</div>
+      <div id="iv-msg-toast-text" class="text-sm text-zinc-100"></div>
+    </div>
 
     <div id="iv-grid" class="iv-grid flex-1 min-h-0 p-2 gap-2">
       <div class="panel flex flex-col min-h-0 bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden" data-panel="caption">
@@ -140,6 +160,14 @@
             <button id="iv-chat-send" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm">Send</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Screen capture overlay -->
+    <div id="capture-overlay" class="hidden fixed inset-0 z-[100] cursor-crosshair" style="background:rgba(0,0,0,0.3)">
+      <div id="capture-selection" class="hidden absolute border-2 border-blue-400 bg-blue-400/10 pointer-events-none"></div>
+      <div class="absolute top-2 left-1/2 -translate-x-1/2 bg-zinc-900/90 text-zinc-200 text-xs px-3 py-1.5 rounded-full pointer-events-none">
+        Drag to select area &mdash; ESC to cancel
       </div>
     </div>
   </section>
@@ -175,25 +203,74 @@
         </div>
       </div>
 
-      <div class="w-full md:w-56 shrink-0 bg-zinc-800 border border-zinc-700 rounded-lg flex flex-col overflow-hidden max-h-48 md:max-h-none">
-        <h3 class="m-0 px-3 py-2 text-sm font-semibold bg-zinc-700 border-b border-zinc-600">Sticky Notes</h3>
-        <ul id="sp-sticky-list" class="flex-1 overflow-y-auto p-2 space-y-1">
-          <li class="sp-sticky-empty text-xs text-zinc-500 p-2">No sticky notes yet</li>
-        </ul>
+      <!-- Right sidebar: Stickies + Files -->
+      <div class="w-full md:w-64 shrink-0 flex flex-col gap-2 max-h-full md:overflow-y-auto">
+        <!-- Sticky notes panel -->
+        <div class="bg-zinc-800 border border-zinc-700 rounded-lg flex flex-col overflow-hidden max-h-72">
+          <div class="flex items-center gap-1 px-3 py-2 bg-zinc-700 border-b border-zinc-600 shrink-0">
+            <h3 class="text-sm font-semibold flex-1 m-0">Sticky Notes</h3>
+            <button id="sp-sticky-add-btn" title="Add new sticky" class="w-7 h-7 bg-blue-600 hover:bg-blue-700 rounded text-xs font-bold">+</button>
+          </div>
+          <ul id="sp-sticky-list" class="flex-1 overflow-y-auto p-2 space-y-1">
+            <li class="sp-sticky-empty text-xs text-zinc-500 p-2">No sticky notes yet</li>
+          </ul>
+        </div>
+
+        <!-- Files panel -->
+        <div class="bg-zinc-800 border border-zinc-700 rounded-lg flex flex-col overflow-hidden max-h-60">
+          <div class="px-3 py-2 bg-zinc-700 border-b border-zinc-600 shrink-0">
+            <h3 class="text-sm font-semibold m-0">Interviewer Files</h3>
+          </div>
+          <ul id="sp-file-list" class="flex-1 overflow-y-auto p-2 space-y-1">
+            <li class="sp-file-empty text-xs text-zinc-500 p-2">No files shared</li>
+          </ul>
+        </div>
       </div>
     </div>
 
     <!-- Sticky note detail modal -->
     <div id="sp-sticky-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-zinc-800 border border-zinc-700 rounded-xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh]">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-zinc-700 shrink-0">
+          <input id="sp-modal-title-input" type="text" class="font-bold flex-1 bg-transparent outline-none border-b border-transparent focus:border-zinc-500 text-zinc-100 text-base" />
+          <button id="sp-modal-close" class="text-zinc-400 hover:text-zinc-200 text-xl leading-none ml-2">&times;</button>
+        </div>
+        <!-- Modal format toolbar -->
+        <div class="flex items-center gap-1 px-4 py-2 border-b border-zinc-700 bg-zinc-900/50 shrink-0">
+          <button id="sp-modal-fmt-bold" title="Bold" class="w-7 h-7 border border-zinc-600 bg-zinc-800 rounded hover:bg-zinc-700 text-xs"><b>B</b></button>
+          <button id="sp-modal-fmt-hl" title="Highlight" class="w-7 h-7 border border-zinc-600 bg-zinc-800 rounded hover:bg-zinc-700 text-xs"><mark class="px-0.5">H</mark></button>
+          <button id="sp-modal-fmt-clear" title="Clear formatting" class="px-2 h-7 border border-zinc-600 bg-zinc-800 rounded hover:bg-zinc-700 text-xs">Clear</button>
+        </div>
+        <div id="sp-modal-body" contenteditable="true"
+             class="p-4 text-sm leading-relaxed overflow-y-auto flex-1 outline-none focus:ring-1 focus:ring-zinc-500 min-h-[6rem]"></div>
+        <div class="px-4 py-3 border-t border-zinc-700 flex justify-between gap-2 shrink-0">
+          <div class="flex gap-2">
+            <button id="sp-modal-delete" class="px-3 py-2 bg-red-900 hover:bg-red-800 rounded text-sm">Delete</button>
+          </div>
+          <div class="flex gap-2">
+            <button id="sp-modal-close2" class="px-4 py-2 border border-zinc-600 rounded hover:bg-zinc-700 text-sm">Close</button>
+            <button id="sp-modal-show" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded text-sm">Show</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add sticky modal (support-created) -->
+    <div id="sp-sticky-new-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-zinc-800 border border-zinc-700 rounded-xl w-full max-w-md shadow-2xl">
         <div class="flex items-center justify-between px-4 py-3 border-b border-zinc-700 font-bold">
-          <span id="sp-modal-title"></span>
-          <button id="sp-modal-close" class="text-zinc-400 hover:text-zinc-200 text-xl leading-none">&times;</button>
+          <span>New Sticky Note</span>
+          <button id="sp-new-close" class="text-zinc-400 hover:text-zinc-200 text-xl leading-none">&times;</button>
         </div>
-        <div id="sp-modal-body" class="p-4 text-sm leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto"></div>
+        <div class="p-4 space-y-3">
+          <input id="sp-new-title" type="text" placeholder="Title"
+                 class="w-full px-3 py-2 bg-zinc-950 border border-zinc-600 rounded text-sm" />
+          <textarea id="sp-new-content" rows="4" placeholder="Content"
+                    class="w-full px-3 py-2 bg-zinc-950 border border-zinc-600 rounded text-sm resize-y"></textarea>
+        </div>
         <div class="px-4 py-3 border-t border-zinc-700 flex justify-end gap-2">
-          <button id="sp-modal-close2" class="px-4 py-2 border border-zinc-600 rounded hover:bg-zinc-700 text-sm">Close</button>
-          <button id="sp-modal-show" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded text-sm">Show to Interviewer</button>
+          <button id="sp-new-cancel" class="px-4 py-2 border border-zinc-600 rounded hover:bg-zinc-700 text-sm">Cancel</button>
+          <button id="sp-new-save" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm font-semibold">Add</button>
         </div>
       </div>
     </div>

@@ -6,9 +6,10 @@ let role = null;
 let connected = false;
 let msgCounter = 0;
 let settings = { hotkeys: {}, webpages: [] };
-let stickyNotes = [];       // { id, title, content }
-let uploadedFiles = [];     // [ path, ... ]
+let stickyNotes = [];       // { id, title, content }  — interviewer's own notes
+let uploadedFiles = [];     // { path, name, fileType }
 let currentStickyIdx = 0;
+let stickyShowing = false;  // track if sticky is currently shown
 
 function showView(id) {
   $$('.view').forEach(v => v.classList.toggle('active', v.id === id));
@@ -83,18 +84,24 @@ $$('.tab').forEach(tab => {
 });
 
 // ========================================================
-// Role select — File uploads (single input + list)
+// Role select — File uploads with type label
 // ========================================================
 function renderFileList() {
   const ul = $('#file-list');
   ul.innerHTML = '';
-  uploadedFiles.forEach((p, i) => {
+  uploadedFiles.forEach((f, i) => {
     const li = document.createElement('li');
     li.className = 'flex items-center gap-2 px-2 py-1.5 bg-zinc-800 rounded text-xs';
+
+    const typeBadge = document.createElement('span');
+    typeBadge.className = 'shrink-0 px-1.5 py-0.5 bg-zinc-700 rounded text-zinc-300 font-medium';
+    typeBadge.textContent = f.fileType || 'Other';
+
     const name = document.createElement('span');
     name.className = 'flex-1 truncate';
-    name.textContent = p.split(/[/\\]/).pop();
-    name.title = p;
+    name.textContent = f.name;
+    name.title = f.path;
+
     const del = document.createElement('button');
     del.className = 'w-5 h-5 bg-red-900 hover:bg-red-800 rounded text-white shrink-0';
     del.textContent = '×';
@@ -102,6 +109,8 @@ function renderFileList() {
       uploadedFiles.splice(i, 1);
       renderFileList();
     });
+
+    li.appendChild(typeBadge);
     li.appendChild(name);
     li.appendChild(del);
     ul.appendChild(li);
@@ -111,7 +120,10 @@ function renderFileList() {
 $('#file-add-btn').addEventListener('click', async () => {
   const paths = await window.api.openFileDialog();
   if (paths && paths.length) {
-    uploadedFiles.push(...paths);
+    const fileType = $('#file-type-select').value;
+    paths.forEach(p => {
+      uploadedFiles.push({ path: p, name: p.split(/[/\\]/).pop(), fileType });
+    });
     renderFileList();
   }
 });
@@ -177,6 +189,7 @@ $('#btn-start-interviewer').addEventListener('click', async () => {
   const port = parseInt($('#role-port').value, 10) || 5000;
   showView('view-interviewer');
   $('#iv-grid').dataset.focus = 'caption';
+  updateStickyNavButtons();
   populateWebList();
   try {
     await window.api.startServer(port);
@@ -214,13 +227,13 @@ $('#btn-sp-connect').addEventListener('click', async () => {
     $('#role-sp-status').textContent = 'Disconnected';
     $('#btn-start-support').disabled = true;
   }
-  // Auto-start caption capture
-  startCaption();
 });
 
 $('#btn-start-support').addEventListener('click', () => {
   role = 'support';
   showView('view-support');
+  // Focus message input immediately
+  setTimeout(() => $('#sp-chat-input').focus(), 100);
 });
 
 $('#btn-settings').addEventListener('click', () => {
@@ -233,22 +246,76 @@ $$('.back-btn').forEach(b =>
 );
 
 // ========================================================
-// Interviewer: panel focus
+// Interviewer: panel focus + auto-focus chat input
 // ========================================================
 $$('#iv-grid .panel-head').forEach(head => {
   head.addEventListener('click', () => {
-    $('#iv-grid').dataset.focus = head.dataset.panel;
+    const panel = head.dataset.panel;
+    $('#iv-grid').dataset.focus = panel;
+    if (panel === 'chat') {
+      setTimeout(() => $('#iv-chat-input').focus(), 50);
+    }
   });
 });
 
 // ========================================================
-// Interviewer: sticky button — cycle through notes in external window
+// Interviewer: sticky navigation buttons
 // ========================================================
+function updateStickyNavButtons() {
+  const hasSt = stickyNotes.length > 1;
+  $('#iv-sticky-prev').style.display = hasSt ? '' : 'none';
+  $('#iv-sticky-next').style.display = hasSt ? '' : 'none';
+}
+
+function showStickyAtIndex(idx) {
+  if (stickyNotes.length === 0) return;
+  currentStickyIdx = ((idx % stickyNotes.length) + stickyNotes.length) % stickyNotes.length;
+  const note = stickyNotes[currentStickyIdx];
+  window.api.showSticky(note);
+  stickyShowing = true;
+  updateShowHideBtn();
+}
+
+function updateShowHideBtn() {
+  // This is for the interviewer's own sticky toggle button
+  const btn = $('#iv-sticky-btn');
+  if (stickyShowing) {
+    btn.title = 'Hide sticky note';
+    btn.style.opacity = '1';
+  } else {
+    btn.title = 'Show sticky note';
+    btn.style.opacity = '0.6';
+  }
+}
+
 $('#iv-sticky-btn').addEventListener('click', () => {
   if (stickyNotes.length === 0) return;
-  const note = stickyNotes[currentStickyIdx % stickyNotes.length];
-  currentStickyIdx++;
-  window.api.showSticky(note);
+  if (stickyShowing) {
+    window.api.hideSticky();
+    stickyShowing = false;
+  } else {
+    showStickyAtIndex(currentStickyIdx);
+  }
+  updateShowHideBtn();
+});
+
+$('#iv-sticky-prev').addEventListener('click', () => {
+  showStickyAtIndex(currentStickyIdx - 1);
+});
+$('#iv-sticky-next').addEventListener('click', () => {
+  showStickyAtIndex(currentStickyIdx + 1);
+});
+
+// Keyboard navigation for stickies (Alt+[ and Alt+])
+document.addEventListener('keydown', (e) => {
+  if (role !== 'interviewer') return;
+  if (e.altKey && e.key === '[') {
+    e.preventDefault();
+    showStickyAtIndex(currentStickyIdx - 1);
+  } else if (e.altKey && e.key === ']') {
+    e.preventDefault();
+    showStickyAtIndex(currentStickyIdx + 1);
+  }
 });
 
 // ========================================================
@@ -296,7 +363,137 @@ $('#iv-chat-input').addEventListener('keydown', e => {
 });
 
 // ========================================================
-// Support: chat (rich input)
+// Interviewer: screen capture gadget
+// ========================================================
+$('#iv-capture-btn').addEventListener('click', () => startCapture());
+
+function startCapture() {
+  const overlay = $('#capture-overlay');
+  const sel = $('#capture-selection');
+  overlay.classList.remove('hidden');
+
+  let startX, startY, dragging = false;
+
+  function onMouseDown(e) {
+    dragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    sel.classList.remove('hidden');
+    sel.style.left = startX + 'px';
+    sel.style.top = startY + 'px';
+    sel.style.width = '0';
+    sel.style.height = '0';
+  }
+
+  function onMouseMove(e) {
+    if (!dragging) return;
+    const x = Math.min(e.clientX, startX);
+    const y = Math.min(e.clientY, startY);
+    const w = Math.abs(e.clientX - startX);
+    const h = Math.abs(e.clientY - startY);
+    sel.style.left = x + 'px';
+    sel.style.top = y + 'px';
+    sel.style.width = w + 'px';
+    sel.style.height = h + 'px';
+  }
+
+  async function onMouseUp(e) {
+    if (!dragging) return;
+    dragging = false;
+
+    const x = Math.min(e.clientX, startX);
+    const y = Math.min(e.clientY, startY);
+    const w = Math.abs(e.clientX - startX);
+    const h = Math.abs(e.clientY - startY);
+
+    // Clean up
+    overlay.classList.add('hidden');
+    sel.classList.add('hidden');
+    overlay.removeEventListener('mousedown', onMouseDown);
+    overlay.removeEventListener('mousemove', onMouseMove);
+    overlay.removeEventListener('mouseup', onMouseUp);
+    document.removeEventListener('keydown', onEsc);
+
+    if (w < 5 || h < 5) return;
+
+    // Capture the window content
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { mediaSource: 'screen' },
+        audio: false
+      });
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      await new Promise(r => { video.onloadedmetadata = r; });
+      video.play();
+      await new Promise(r => requestAnimationFrame(r));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      // Scale factor between logical px and video resolution
+      const scaleX = video.videoWidth / window.screen.width;
+      const scaleY = video.videoHeight / window.screen.height;
+
+      // Get window position offset within the screen
+      const winX = window.screenX || window.screenLeft || 0;
+      const winY = window.screenY || window.screenTop || 0;
+
+      ctx.drawImage(video,
+        (winX + x) * scaleX, (winY + y) * scaleY,
+        w * scaleX, h * scaleY,
+        0, 0, w, h
+      );
+
+      stream.getTracks().forEach(t => t.stop());
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+          showCaptureConfirm();
+        } catch (err) {
+          console.error('Clipboard write failed', err);
+        }
+      }, 'image/png');
+    } catch (err) {
+      // User cancelled getDisplayMedia or other error
+      console.error('Capture error', err);
+    }
+  }
+
+  function onEsc(e) {
+    if (e.key === 'Escape') {
+      dragging = false;
+      overlay.classList.add('hidden');
+      sel.classList.add('hidden');
+      overlay.removeEventListener('mousedown', onMouseDown);
+      overlay.removeEventListener('mousemove', onMouseMove);
+      overlay.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('keydown', onEsc);
+    }
+  }
+
+  overlay.addEventListener('mousedown', onMouseDown);
+  overlay.addEventListener('mousemove', onMouseMove);
+  overlay.addEventListener('mouseup', onMouseUp);
+  document.addEventListener('keydown', onEsc);
+}
+
+function showCaptureConfirm() {
+  // Brief toast notification
+  const toast = document.createElement('div');
+  toast.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] bg-green-700 text-white text-sm px-4 py-2 rounded-lg shadow-xl pointer-events-none';
+  toast.textContent = 'Screenshot copied to clipboard';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+// ========================================================
+// Support: chat (rich input) + auto-focus when pane active
 // ========================================================
 function spSend() {
   const input = $('#sp-chat-input');
@@ -314,10 +511,22 @@ $('#sp-chat-input').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); spSend(); }
 });
 
+// Auto-focus support chat input when view becomes active
+// (MutationObserver on view-support class list)
+(function() {
+  const supportView = $('#view-support');
+  const observer = new MutationObserver(() => {
+    if (supportView.classList.contains('active')) {
+      setTimeout(() => $('#sp-chat-input').focus(), 50);
+    }
+  });
+  observer.observe(supportView, { attributes: true, attributeFilter: ['class'] });
+})();
+
 // ========================================================
 // Support: formatting (toggle)
 // ========================================================
-function toggleWrap(tag) {
+function toggleWrap(tag, scope) {
   const sel = window.getSelection();
   if (!sel.rangeCount || sel.isCollapsed) return;
   const range = sel.getRangeAt(0);
@@ -325,13 +534,15 @@ function toggleWrap(tag) {
   let container = range.commonAncestorContainer;
   if (container.nodeType === 3) container = container.parentElement;
 
+  // Allow in sp-chat-input, sp-chat-log .msg, or modal body
   const inInput = container.closest('#sp-chat-input');
+  const inModal = container.closest('#sp-modal-body');
   const msgEl = container.closest('#sp-chat-log .msg');
-  if (!inInput && !msgEl) return;
+  if (!inInput && !msgEl && !inModal) return;
 
   let existing = container.closest(tag);
-  const boundary = inInput || msgEl.querySelector('.msg-content');
-  if (existing && !boundary.contains(existing)) existing = null;
+  const boundary = inInput || inModal || (msgEl && msgEl.querySelector('.msg-content'));
+  if (existing && boundary && !boundary.contains(existing)) existing = null;
 
   if (existing) {
     while (existing.firstChild)
@@ -351,17 +562,20 @@ function toggleWrap(tag) {
   if (msgEl) syncEdit(msgEl);
 }
 
-function clearFormat() {
+function clearFormat(scope) {
   const sel = window.getSelection();
   if (!sel.rangeCount) return;
   let node = sel.getRangeAt(0).commonAncestorContainer;
   if (node.nodeType === 3) node = node.parentElement;
 
   const inInput = node.closest('#sp-chat-input');
+  const inModal = node.closest('#sp-modal-body');
   const msgEl = node.closest('#sp-chat-log .msg');
 
   if (inInput) {
     inInput.textContent = inInput.textContent;
+  } else if (inModal) {
+    inModal.textContent = inModal.textContent;
   } else if (msgEl) {
     const c = msgEl.querySelector('.msg-content');
     c.textContent = c.textContent;
@@ -383,7 +597,15 @@ function syncEdit(msgEl) {
 );
 $('#fmt-bold').addEventListener('click', () => toggleWrap('b'));
 $('#fmt-hl').addEventListener('click', () => toggleWrap('mark'));
-$('#fmt-clear').addEventListener('click', clearFormat);
+$('#fmt-clear').addEventListener('click', () => clearFormat());
+
+// Modal formatting buttons
+['#sp-modal-fmt-bold', '#sp-modal-fmt-hl', '#sp-modal-fmt-clear'].forEach(id =>
+  $(id).addEventListener('mousedown', e => e.preventDefault())
+);
+$('#sp-modal-fmt-bold').addEventListener('click', () => toggleWrap('b'));
+$('#sp-modal-fmt-hl').addEventListener('click', () => toggleWrap('mark'));
+$('#sp-modal-fmt-clear').addEventListener('click', () => clearFormat());
 
 // ========================================================
 // Support: clear history
@@ -397,45 +619,115 @@ $('#chat-clear').addEventListener('click', () => {
 // ========================================================
 // Support: sticky notes list + modal
 // ========================================================
-let receivedStickies = [];
+let receivedStickies = [];   // from interviewer (read-only title, editable content locally)
+let ownStickies = [];        // support-created
 let modalNote = null;
+let modalNoteSource = null;  // 'received' | 'own'
+let modalNoteIdx = -1;
+let stickyBeingShown = null; // id of sticky currently shown to interviewer
+
+function allStickies() {
+  return [...receivedStickies, ...ownStickies];
+}
 
 function renderSupportStickies() {
   const ul = $('#sp-sticky-list');
   ul.innerHTML = '';
-  if (receivedStickies.length === 0) {
+  const all = allStickies();
+  if (all.length === 0) {
     const li = document.createElement('li');
     li.className = 'sp-sticky-empty text-xs text-zinc-500 p-2';
     li.textContent = 'No sticky notes yet';
     ul.appendChild(li);
     return;
   }
-  receivedStickies.forEach(note => {
+  all.forEach((note, i) => {
     const li = document.createElement('li');
-    li.className = 'px-2 py-1.5 bg-zinc-950 rounded border-l-2 border-amber-500 cursor-pointer hover:bg-zinc-800 text-xs transition';
+    const isShowing = stickyBeingShown === note.id;
+    li.className = 'px-2 py-1.5 bg-zinc-950 rounded border-l-2 cursor-pointer hover:bg-zinc-800 text-xs transition ' +
+                   (isShowing ? 'border-green-400' : 'border-amber-500');
+    const header = document.createElement('div');
+    header.className = 'flex items-center gap-1';
     const strong = document.createElement('strong');
-    strong.className = 'block';
+    strong.className = 'block flex-1';
     strong.textContent = note.title;
+    if (isShowing) {
+      const tag = document.createElement('span');
+      tag.className = 'text-green-400 text-xs';
+      tag.textContent = '● shown';
+      header.appendChild(strong);
+      header.appendChild(tag);
+    } else {
+      header.appendChild(strong);
+    }
     const span = document.createElement('span');
     span.className = 'text-zinc-400 block truncate';
-    span.textContent = note.content;
-    li.appendChild(strong);
+    span.textContent = note.content || '';
+    li.appendChild(header);
     li.appendChild(span);
-    li.addEventListener('click', () => openStickyModal(note));
+    li.addEventListener('click', () => openStickyModal(note, i));
     ul.appendChild(li);
   });
 }
 
-function openStickyModal(note) {
+function openStickyModal(note, idx) {
   modalNote = note;
-  $('#sp-modal-title').textContent = note.title;
-  $('#sp-modal-body').textContent = note.content;
+  modalNoteIdx = idx;
+  modalNoteSource = idx < receivedStickies.length ? 'received' : 'own';
+
+  $('#sp-modal-title-input').value = note.title;
+  $('#sp-modal-body').innerHTML = note.content || '';
+
+  const isShowing = stickyBeingShown === note.id;
+  updateModalShowBtn(isShowing);
+
+  // Delete only available for own stickies
+  $('#sp-modal-delete').style.display = modalNoteSource === 'own' ? '' : 'none';
+
   $('#sp-sticky-modal').classList.remove('hidden');
+  // Focus body for immediate editing
+  setTimeout(() => $('#sp-modal-body').focus(), 50);
+}
+
+function updateModalShowBtn(showing) {
+  const btn = $('#sp-modal-show');
+  if (showing) {
+    btn.textContent = 'Hide from Interviewer';
+    btn.className = 'px-4 py-2 bg-zinc-600 hover:bg-zinc-500 text-white font-semibold rounded text-sm';
+  } else {
+    btn.textContent = 'Show';
+    btn.className = 'px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded text-sm';
+  }
+}
+
+function saveModalEdits() {
+  if (!modalNote) return;
+  const newTitle = $('#sp-modal-title-input').value.trim() || modalNote.title;
+  const newContent = sanitizeHtml($('#sp-modal-body').innerHTML);
+  modalNote.title = newTitle;
+  modalNote.content = newContent;
+
+  // Update in the correct array
+  if (modalNoteSource === 'received') {
+    const idx = receivedStickies.findIndex(n => n.id === modalNote.id);
+    if (idx >= 0) receivedStickies[idx] = modalNote;
+  } else {
+    const idx = ownStickies.findIndex(n => n.id === modalNote.id);
+    if (idx >= 0) ownStickies[idx] = modalNote;
+  }
+
+  // If currently showing, update the displayed sticky
+  if (stickyBeingShown === modalNote.id) {
+    window.api.sendMessage({ type: 'show-sticky', note: modalNote });
+  }
 }
 
 function closeStickyModal() {
+  saveModalEdits();
   $('#sp-sticky-modal').classList.add('hidden');
+  renderSupportStickies();
   modalNote = null;
+  modalNoteIdx = -1;
 }
 
 $('#sp-modal-close').addEventListener('click', closeStickyModal);
@@ -443,24 +735,143 @@ $('#sp-modal-close2').addEventListener('click', closeStickyModal);
 
 $('#sp-modal-show').addEventListener('click', () => {
   if (!modalNote) return;
-  window.api.sendMessage({ type: 'show-sticky', note: modalNote });
-  closeStickyModal();
+  const isShowing = stickyBeingShown === modalNote.id;
+  if (isShowing) {
+    // Hide it
+    window.api.sendMessage({ type: 'hide-sticky' });
+    window.api.hideSticky();
+    stickyBeingShown = null;
+    updateModalShowBtn(false);
+  } else {
+    // Save edits first
+    saveModalEdits();
+    // Show to interviewer
+    window.api.sendMessage({ type: 'show-sticky', note: modalNote });
+    stickyBeingShown = modalNote.id;
+    updateModalShowBtn(true);
+  }
+  renderSupportStickies();
 });
+
+$('#sp-modal-delete').addEventListener('click', () => {
+  if (!modalNote || modalNoteSource !== 'own') return;
+  if (!confirm('Delete this sticky note?')) return;
+  const idx = ownStickies.findIndex(n => n.id === modalNote.id);
+  if (idx >= 0) ownStickies.splice(idx, 1);
+  if (stickyBeingShown === modalNote.id) {
+    window.api.hideSticky();
+    stickyBeingShown = null;
+  }
+  $('#sp-sticky-modal').classList.add('hidden');
+  modalNote = null;
+  renderSupportStickies();
+});
+
+// ========================================================
+// Support: add new sticky button
+// ========================================================
+let spStickyIdCounter = 0;
+
+$('#sp-sticky-add-btn').addEventListener('click', () => {
+  $('#sp-new-title').value = '';
+  $('#sp-new-content').value = '';
+  $('#sp-sticky-new-modal').classList.remove('hidden');
+  setTimeout(() => $('#sp-new-title').focus(), 50);
+});
+
+$('#sp-new-close').addEventListener('click', () => $('#sp-sticky-new-modal').classList.add('hidden'));
+$('#sp-new-cancel').addEventListener('click', () => $('#sp-sticky-new-modal').classList.add('hidden'));
+
+$('#sp-new-save').addEventListener('click', () => {
+  const title = $('#sp-new-title').value.trim() || 'Note';
+  const content = $('#sp-new-content').value.trim();
+  ownStickies.push({ id: `sp-sticky-${++spStickyIdCounter}`, title, content });
+  $('#sp-sticky-new-modal').classList.add('hidden');
+  renderSupportStickies();
+});
+
+$('#sp-new-title').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); $('#sp-new-content').focus(); }
+});
+$('#sp-new-content').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $('#sp-new-save').click(); }
+});
+
+// ========================================================
+// Support: interviewer file list + download
+// ========================================================
+let interviewerFiles = [];  // { path, name, fileType } sent over network
+
+function renderSupportFileList() {
+  const ul = $('#sp-file-list');
+  ul.innerHTML = '';
+  if (interviewerFiles.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'sp-file-empty text-xs text-zinc-500 p-2';
+    li.textContent = 'No files shared';
+    ul.appendChild(li);
+    return;
+  }
+  interviewerFiles.forEach(f => {
+    const li = document.createElement('li');
+    li.className = 'flex items-center gap-2 px-2 py-1.5 bg-zinc-950 rounded text-xs';
+
+    const badge = document.createElement('span');
+    badge.className = 'shrink-0 px-1.5 py-0.5 bg-zinc-700 rounded text-zinc-300 font-medium';
+    badge.textContent = f.fileType || 'File';
+
+    const name = document.createElement('span');
+    name.className = 'flex-1 truncate';
+    name.textContent = f.name;
+
+    const dl = document.createElement('button');
+    dl.className = 'shrink-0 px-2 py-0.5 bg-blue-700 hover:bg-blue-600 rounded text-white';
+    dl.textContent = '↓';
+    dl.title = 'Download';
+    dl.addEventListener('click', async () => {
+      dl.disabled = true;
+      dl.textContent = '…';
+      const res = await window.api.readFile(f.path);
+      if (res.ok) {
+        await window.api.saveFileDialog(res.name, res.data);
+      } else {
+        alert('Could not read file: ' + (res.error || 'unknown error'));
+      }
+      dl.disabled = false;
+      dl.textContent = '↓';
+    });
+
+    li.appendChild(badge);
+    li.appendChild(name);
+    li.appendChild(dl);
+    ul.appendChild(li);
+  });
+}
 
 // ========================================================
 // Incoming messages
 // ========================================================
+let toastTimer = null;
+
 window.api.onChatMessage((msg) => {
   const log = role === 'interviewer' ? $('#iv-chat-log') : $('#sp-chat-log');
   const withDel = role === 'support';
 
   if (msg.type === 'msg') {
     appendMsg(log, msg, withDel);
+
     if (role === 'interviewer') {
+      // Badge notification
       const badge = $('#iv-badge');
       badge.classList.remove('hidden');
       clearTimeout(badge._timer);
       badge._timer = setTimeout(() => badge.classList.add('hidden'), 3000);
+
+      // In-app toast if not on chat pane
+      const focusedPanel = $('#iv-grid').dataset.focus;
+      if (focusedPanel !== 'chat') {
+        showMsgToast(msg.text || msg.html || '');
+      }
     }
   } else if (msg.type === 'edit') {
     const el = log.querySelector(`.msg[data-id="${msg.id}"] .msg-content`);
@@ -479,8 +890,29 @@ window.api.onChatMessage((msg) => {
     if (role === 'interviewer') {
       window.api.showSticky(msg.note);
     }
+  } else if (msg.type === 'hide-sticky') {
+    if (role === 'interviewer') {
+      window.api.hideSticky();
+    }
+  } else if (msg.type === 'file-list') {
+    if (role === 'support') {
+      interviewerFiles = msg.files || [];
+      renderSupportFileList();
+    }
   }
 });
+
+function showMsgToast(text) {
+  const toast = $('#iv-msg-toast');
+  const textEl = $('#iv-msg-toast-text');
+  // Strip HTML for plain text display
+  const tmp = document.createElement('div');
+  tmp.innerHTML = text;
+  textEl.textContent = tmp.textContent || text;
+  toast.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.add('hidden'), 5000);
+}
 
 window.api.onPeerStatus((s) => {
   connected = !!s.connected;
@@ -493,8 +925,14 @@ window.api.onPeerStatus((s) => {
     el.classList.toggle('on', connected);
     el.classList.toggle('off', !connected);
 
-    if (connected && stickyNotes.length > 0) {
-      window.api.sendMessage({ type: 'sticky-list', notes: stickyNotes });
+    if (connected) {
+      if (stickyNotes.length > 0) {
+        window.api.sendMessage({ type: 'sticky-list', notes: stickyNotes });
+      }
+      // Send file list to support
+      if (uploadedFiles.length > 0) {
+        window.api.sendMessage({ type: 'file-list', files: uploadedFiles });
+      }
     }
   } else if (role === 'support') {
     const el = $('#sp-status');
@@ -511,14 +949,21 @@ window.api.onHotkeyAction((a) => {
   if (a.action === 'focusPanel') {
     if (role === 'interviewer') {
       $('#iv-grid').dataset.focus = a.panel;
+      if (a.panel === 'chat') {
+        setTimeout(() => $('#iv-chat-input').focus(), 50);
+      }
     }
     return;
   }
   if (a.action === 'toggleSticky') {
-    // Sticky window doesn't exist yet — open with current/first note
     if (role === 'interviewer' && stickyNotes.length > 0) {
-      const note = stickyNotes[currentStickyIdx % stickyNotes.length];
-      window.api.showSticky(note);
+      if (stickyShowing) {
+        window.api.hideSticky();
+        stickyShowing = false;
+      } else {
+        showStickyAtIndex(currentStickyIdx);
+      }
+      updateShowHideBtn();
     }
     return;
   }
