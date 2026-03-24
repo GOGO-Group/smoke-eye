@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, globalShortcut, screen, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, globalShortcut, screen, dialog, desktopCapturer, clipboard, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const net = require('net');
@@ -39,7 +39,10 @@ const defaultSettings = {
     focusCaption: 'CommandOrControl+Alt+4',
     focusWeb:     'CommandOrControl+Alt+5',
     focusChat:    'CommandOrControl+Alt+6',
-    toggleSticky: 'CommandOrControl+Alt+S'
+    toggleSticky: 'CommandOrControl+Alt+S',
+    stickyPrev:   'CommandOrControl+Alt+[',
+    stickyNext:   'CommandOrControl+Alt+]',
+    captureArea:  'CommandOrControl+Alt+C'
   },
   webpages: [
     'https://example.com',
@@ -140,6 +143,8 @@ function toggleStickyVisibility() {
 function setSize(preset) {
   if (!mainWindow) return;
   const { w, h } = SIZES[preset];
+  if (mainWindow.isMaximized()) mainWindow.unmaximize();
+  if (mainWindow.isFullScreen()) mainWindow.setFullScreen(false);
   mainWindow.setSize(w, h);
 }
 
@@ -181,8 +186,16 @@ const hotkeyActions = {
   focusCaption: () => focusPanel('caption'),
   focusWeb:     () => focusPanel('web'),
   focusChat:    () => focusPanel('chat'),
-  toggleSticky: toggleStickyVisibility
+  toggleSticky: toggleStickyVisibility,
+  stickyPrev:   () => navSticky(-1),
+  stickyNext:   () => navSticky(1),
+  captureArea:  () => mainWindow && mainWindow.webContents.send('hotkey-action', { action: 'captureArea' })
 };
+
+function navSticky(dir) {
+  if (!mainWindow) return;
+  mainWindow.webContents.send('hotkey-action', { action: 'navSticky', dir });
+}
 
 function registerHotkeys() {
   globalShortcut.unregisterAll();
@@ -376,6 +389,79 @@ ipcMain.handle('hide-sticky', () => {
 
 ipcMain.on('close-sticky', () => {
   if (stickyWindow && !stickyWindow.isDestroyed()) stickyWindow.hide();
+});
+
+ipcMain.on('sticky-nav', (_e, dir) => navSticky(dir));
+
+// ---------- File transfer IPC ----------
+ipcMain.handle('read-file', (_e, filePath) => {
+  try {
+    const data = fs.readFileSync(filePath);
+    return { ok: true, name: path.basename(filePath), data: data.toString('base64') };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+});
+
+ipcMain.handle('save-file', async (_e, { name, data }) => {
+  const result = await dialog.showSaveDialog(mainWindow, { defaultPath: name });
+  if (result.canceled || !result.filePath) return { ok: false };
+  try {
+    fs.writeFileSync(result.filePath, Buffer.from(data, 'base64'));
+    return { ok: true, path: result.filePath };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+});
+
+// ---------- Screen capture IPC ----------
+let captureOverlay = null;
+
+ipcMain.handle('capture-area', async () => {
+  if (captureOverlay && !captureOverlay.isDestroyed()) return { ok: false, error: 'already-capturing' };
+
+  const display = screen.getPrimaryDisplay();
+  const { width, height } = display.size;
+  const scale = display.scaleFactor || 1;
+
+  const sources = await desktopCapturer.getSources({
+    types: ['screen'],
+    thumbnailSize: { width: Math.round(width * scale), height: Math.round(height * scale) }
+  });
+  if (!sources.length) return { ok: false, error: 'no-source' };
+  const screenshot = sources[0].thumbnail;
+
+  return new Promise((resolve) => {
+    captureOverlay = new BrowserWindow({
+      x: display.bounds.x, y: display.bounds.y, width, height,
+      frame: false, transparent: true, alwaysOnTop: true,
+      skipTaskbar: true, resizable: false, movable: false, fullscreen: true,
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js'),
+        contextIsolation: true, nodeIntegration: false
+      }
+    });
+    captureOverlay.loadFile('renderer/capture.html');
+    captureOverlay.once('ready-to-show', () => {
+      captureOverlay.webContents.send('capture-init', {
+        dataURL: screenshot.toDataURL(), width, height, scale
+      });
+    });
+
+    ipcMain.once('capture-done', (_e, rect) => {
+      if (captureOverlay && !captureOverlay.isDestroyed()) captureOverlay.close();
+      captureOverlay = null;
+      if (!rect) return resolve({ ok: false, cancelled: true });
+      const cropped = screenshot.crop({
+        x: Math.round(rect.x * scale), y: Math.round(rect.y * scale),
+        width: Math.round(rect.w * scale), height: Math.round(rect.h * scale)
+      });
+      clipboard.writeImage(cropped);
+      resolve({ ok: true, dataURL: cropped.toDataURL() });
+    });
+
+    captureOverlay.on('closed', () => { captureOverlay = null; });
+  });
 });
 
 // ---------- Interviewer: start TCP server ----------

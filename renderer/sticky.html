@@ -13,19 +13,52 @@
   </style>
 </head>
 <body class="bg-amber-100 text-zinc-900 flex flex-col h-full select-none">
-  <div class="drag flex items-center justify-between px-3 py-2 bg-amber-200 border-b border-amber-400 cursor-move">
-    <span id="title" class="font-bold text-sm truncate">Sticky Note</span>
+  <div class="drag flex items-center gap-1 px-2 py-2 bg-amber-200 border-b border-amber-400 cursor-move">
+    <button id="prev" title="Previous" class="no-drag w-6 h-6 rounded hover:bg-amber-300 text-amber-800 text-sm leading-none">&#9664;</button>
+    <button id="next" title="Next" class="no-drag w-6 h-6 rounded hover:bg-amber-300 text-amber-800 text-sm leading-none">&#9654;</button>
+    <span id="title" class="flex-1 font-bold text-sm truncate px-1">Sticky Note</span>
     <button id="close" class="no-drag w-6 h-6 rounded hover:bg-amber-300 text-amber-800 text-lg leading-none">&times;</button>
   </div>
   <div id="body" class="flex-1 p-3 text-sm leading-relaxed overflow-y-auto whitespace-pre-wrap select-text"></div>
+  <style>
+    #body mark { background: #fbbf24; padding: 0 2px; border-radius: 2px; }
+    #body b, #body strong { font-weight: 700; }
+  </style>
 
   <script>
+    const allowed = new Set(['B', 'STRONG', 'MARK', 'BR']);
+    function sanitize(html) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      (function walk(n) {
+        for (const c of [...n.childNodes]) {
+          if (c.nodeType === 1) {
+            if (!allowed.has(c.tagName)) {
+              while (c.firstChild) n.insertBefore(c.firstChild, c);
+              n.removeChild(c);
+            } else {
+              for (const a of [...c.attributes]) c.removeAttribute(a.name);
+              walk(c);
+            }
+          }
+        }
+      })(tmp);
+      return tmp.innerHTML;
+    }
+
     window.api.onStickyData((note) => {
       document.getElementById('title').textContent = note.title || 'Sticky Note';
-      document.getElementById('body').textContent = note.content || '';
+      const body = document.getElementById('body');
+      if (note.html) body.innerHTML = sanitize(note.html);
+      else body.textContent = note.content || '';
     });
-    document.getElementById('close').addEventListener('click', () => {
-      window.api.closeSticky();
+    document.getElementById('close').addEventListener('click', () => window.api.closeSticky());
+    document.getElementById('prev').addEventListener('click', () => window.api.stickyNav(-1));
+    document.getElementById('next').addEventListener('click', () => window.api.stickyNav(1));
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') window.api.stickyNav(-1);
+      else if (e.key === 'ArrowRight') window.api.stickyNav(1);
+      else if (e.key === 'Escape') window.api.closeSticky();
     });
   </script>
 </body>

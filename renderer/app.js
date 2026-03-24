@@ -6,9 +6,14 @@ let role = null;
 let connected = false;
 let msgCounter = 0;
 let settings = { hotkeys: {}, webpages: [] };
-let stickyNotes = [];       // { id, title, content }
-let uploadedFiles = [];     // [ path, ... ]
+let stickyNotes = [];       // { id, title, content, html }
+let uploadedFiles = [];     // [ { path, name, type }, ... ]
 let currentStickyIdx = 0;
+let shownStickyId = null;   // id of sticky currently shown to interviewer
+
+const FILE_TYPE_LABELS = {
+  cv: 'CV', 'job-description': 'JD', 'support-material': 'Material', other: 'Other'
+};
 
 function showView(id) {
   $$('.view').forEach(v => v.classList.toggle('active', v.id === id));
@@ -88,13 +93,16 @@ $$('.tab').forEach(tab => {
 function renderFileList() {
   const ul = $('#file-list');
   ul.innerHTML = '';
-  uploadedFiles.forEach((p, i) => {
+  uploadedFiles.forEach((f, i) => {
     const li = document.createElement('li');
     li.className = 'flex items-center gap-2 px-2 py-1.5 bg-zinc-800 rounded text-xs';
+    const badge = document.createElement('span');
+    badge.className = 'px-1.5 py-0.5 bg-blue-900 rounded text-[10px] uppercase shrink-0';
+    badge.textContent = FILE_TYPE_LABELS[f.type] || f.type;
     const name = document.createElement('span');
     name.className = 'flex-1 truncate';
-    name.textContent = p.split(/[/\\]/).pop();
-    name.title = p;
+    name.textContent = f.name;
+    name.title = f.path;
     const del = document.createElement('button');
     del.className = 'w-5 h-5 bg-red-900 hover:bg-red-800 rounded text-white shrink-0';
     del.textContent = '×';
@@ -102,6 +110,7 @@ function renderFileList() {
       uploadedFiles.splice(i, 1);
       renderFileList();
     });
+    li.appendChild(badge);
     li.appendChild(name);
     li.appendChild(del);
     ul.appendChild(li);
@@ -111,7 +120,10 @@ function renderFileList() {
 $('#file-add-btn').addEventListener('click', async () => {
   const paths = await window.api.openFileDialog();
   if (paths && paths.length) {
-    uploadedFiles.push(...paths);
+    const type = $('#file-type').value;
+    uploadedFiles.push(...paths.map(p => ({
+      path: p, name: p.split(/[/\\]/).pop(), type
+    })));
     renderFileList();
   }
 });
@@ -150,11 +162,15 @@ function renderStickyList() {
   });
 }
 
+function syncStickyList() {
+  if (connected) window.api.sendMessage({ type: 'sticky-list', notes: stickyNotes });
+}
+
 $('#sticky-add-btn').addEventListener('click', () => {
   const title = $('#sticky-title').value.trim();
   const content = $('#sticky-content').value.trim();
   if (!title && !content) return;
-  stickyNotes.push({ id: `sticky-${++stickyIdCounter}`, title: title || 'Note', content });
+  stickyNotes.push({ id: `sticky-${++stickyIdCounter}`, title: title || 'Note', content, html: escapeHtml(content) });
   $('#sticky-title').value = '';
   $('#sticky-content').value = '';
   renderStickyList();
@@ -235,20 +251,62 @@ $$('.back-btn').forEach(b =>
 // ========================================================
 // Interviewer: panel focus
 // ========================================================
+function setIvFocus(panel) {
+  $('#iv-grid').dataset.focus = panel;
+  if (panel === 'chat') setTimeout(() => $('#iv-chat-input').focus(), 0);
+}
+
 $$('#iv-grid .panel-head').forEach(head => {
-  head.addEventListener('click', () => {
-    $('#iv-grid').dataset.focus = head.dataset.panel;
-  });
+  head.addEventListener('click', () => setIvFocus(head.dataset.panel));
+});
+
+// Re-focus input whenever user clicks anywhere in the chat panel
+$('#iv-grid .panel[data-panel="chat"]').addEventListener('mousedown', (e) => {
+  if ($('#iv-grid').dataset.focus !== 'chat') return;
+  if (e.target.closest('button')) return;
+  setTimeout(() => $('#iv-chat-input').focus(), 0);
 });
 
 // ========================================================
-// Interviewer: sticky button — cycle through notes in external window
+// Interviewer: sticky button + navigation
 // ========================================================
-$('#iv-sticky-btn').addEventListener('click', () => {
+function showStickyAt(idx) {
   if (stickyNotes.length === 0) return;
-  const note = stickyNotes[currentStickyIdx % stickyNotes.length];
-  currentStickyIdx++;
-  window.api.showSticky(note);
+  currentStickyIdx = ((idx % stickyNotes.length) + stickyNotes.length) % stickyNotes.length;
+  window.api.showSticky(stickyNotes[currentStickyIdx]);
+}
+
+$('#iv-sticky-btn').addEventListener('click', () => showStickyAt(currentStickyIdx));
+
+// ========================================================
+// Interviewer: screen capture
+// ========================================================
+async function doCapture() {
+  const res = await window.api.captureArea();
+  if (res && res.ok) showToast('Screenshot copied to clipboard', res.dataURL);
+}
+$('#iv-capture-btn').addEventListener('click', doCapture);
+
+// ========================================================
+// Interviewer: toast
+// ========================================================
+let toastTimer = null;
+function showToast(text, html) {
+  const toast = $('#iv-toast');
+  const body = $('#iv-toast-body');
+  if (html && html.startsWith('data:image')) {
+    body.innerHTML = `<img src="${html}" class="max-w-full rounded" />`;
+  } else {
+    body.innerHTML = html ? sanitizeHtml(html) : escapeHtml(text);
+  }
+  toast.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.add('hidden'), 5000);
+}
+$('#iv-toast').addEventListener('click', () => {
+  $('#iv-toast').classList.add('hidden');
+  clearTimeout(toastTimer);
+  setIvFocus('chat');
 });
 
 // ========================================================
@@ -399,6 +457,7 @@ $('#chat-clear').addEventListener('click', () => {
 // ========================================================
 let receivedStickies = [];
 let modalNote = null;
+let spStickyIdCounter = 0;
 
 function renderSupportStickies() {
   const ul = $('#sp-sticky-list');
@@ -412,24 +471,46 @@ function renderSupportStickies() {
   }
   receivedStickies.forEach(note => {
     const li = document.createElement('li');
-    li.className = 'px-2 py-1.5 bg-zinc-950 rounded border-l-2 border-amber-500 cursor-pointer hover:bg-zinc-800 text-xs transition';
+    li.className = 'relative px-2 py-1.5 bg-zinc-950 rounded border-l-2 border-amber-500 cursor-pointer hover:bg-zinc-800 text-xs transition group';
     const strong = document.createElement('strong');
-    strong.className = 'block';
+    strong.className = 'block pr-5';
     strong.textContent = note.title;
     const span = document.createElement('span');
     span.className = 'text-zinc-400 block truncate';
     span.textContent = note.content;
+    const del = document.createElement('button');
+    del.className = 'absolute top-1 right-1 w-4 h-4 bg-red-900 hover:bg-red-800 rounded text-white text-[10px] leading-none opacity-0 group-hover:opacity-100 transition';
+    del.textContent = '×';
+    del.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteSticky(note.id);
+    });
     li.appendChild(strong);
     li.appendChild(span);
+    li.appendChild(del);
     li.addEventListener('click', () => openStickyModal(note));
     ul.appendChild(li);
   });
 }
 
+function updateModalShowBtn() {
+  const btn = $('#sp-modal-show');
+  const isShown = modalNote && shownStickyId === modalNote.id;
+  btn.textContent = isShown ? 'Hide from Interviewer' : 'Show to Interviewer';
+  btn.classList.toggle('bg-amber-500', !isShown);
+  btn.classList.toggle('hover:bg-amber-600', !isShown);
+  btn.classList.toggle('text-black', !isShown);
+  btn.classList.toggle('bg-zinc-600', isShown);
+  btn.classList.toggle('hover:bg-zinc-500', isShown);
+  btn.classList.toggle('text-white', isShown);
+}
+
 function openStickyModal(note) {
   modalNote = note;
-  $('#sp-modal-title').textContent = note.title;
-  $('#sp-modal-body').textContent = note.content;
+  $('#sp-modal-title').value = note.title;
+  $('#sp-modal-body').innerHTML = note.html ? sanitizeHtml(note.html) : escapeHtml(note.content || '');
+  $('#sp-modal-delete').classList.toggle('invisible', !note.id);
+  updateModalShowBtn();
   $('#sp-sticky-modal').classList.remove('hidden');
 }
 
@@ -438,19 +519,131 @@ function closeStickyModal() {
   modalNote = null;
 }
 
+function saveModalNote() {
+  const title = $('#sp-modal-title').value.trim() || 'Note';
+  const body = $('#sp-modal-body');
+  const html = sanitizeHtml(body.innerHTML);
+  const content = body.textContent;
+  if (modalNote && modalNote.id) {
+    modalNote.title = title;
+    modalNote.content = content;
+    modalNote.html = html;
+    window.api.sendMessage({ type: 'sticky-update', note: modalNote });
+    renderSupportStickies();
+  } else {
+    const note = { id: `sp-sticky-${Date.now()}-${++spStickyIdCounter}`, title, content, html };
+    receivedStickies.push(note);
+    window.api.sendMessage({ type: 'sticky-add', note });
+    renderSupportStickies();
+    modalNote = note;
+    $('#sp-modal-delete').classList.remove('invisible');
+  }
+  updateModalShowBtn();
+}
+
+function deleteSticky(id) {
+  const idx = receivedStickies.findIndex(n => n.id === id);
+  if (idx >= 0) receivedStickies.splice(idx, 1);
+  if (shownStickyId === id) shownStickyId = null;
+  window.api.sendMessage({ type: 'sticky-delete', id });
+  renderSupportStickies();
+}
+
+$('#sp-sticky-add').addEventListener('click', () => {
+  openStickyModal({ id: null, title: '', content: '', html: '' });
+});
+
 $('#sp-modal-close').addEventListener('click', closeStickyModal);
 $('#sp-modal-close2').addEventListener('click', closeStickyModal);
+$('#sp-modal-save').addEventListener('click', saveModalNote);
+
+$('#sp-modal-delete').addEventListener('click', () => {
+  if (!modalNote || !modalNote.id) return;
+  if (!confirm('Delete this sticky note?')) return;
+  deleteSticky(modalNote.id);
+  closeStickyModal();
+});
 
 $('#sp-modal-show').addEventListener('click', () => {
   if (!modalNote) return;
-  window.api.sendMessage({ type: 'show-sticky', note: modalNote });
-  closeStickyModal();
+  if (!modalNote.id) saveModalNote();
+  if (shownStickyId === modalNote.id) {
+    window.api.sendMessage({ type: 'hide-sticky' });
+    shownStickyId = null;
+  } else {
+    window.api.sendMessage({ type: 'show-sticky', note: modalNote });
+    shownStickyId = modalNote.id;
+  }
+  updateModalShowBtn();
 });
+
+// Modal formatting
+function modalToggleWrap(tag) {
+  const sel = window.getSelection();
+  if (!sel.rangeCount || sel.isCollapsed) return;
+  const range = sel.getRangeAt(0);
+  let container = range.commonAncestorContainer;
+  if (container.nodeType === 3) container = container.parentElement;
+  const body = container.closest('#sp-modal-body');
+  if (!body) return;
+  let existing = container.closest(tag);
+  if (existing && !body.contains(existing)) existing = null;
+  if (existing) {
+    while (existing.firstChild) existing.parentNode.insertBefore(existing.firstChild, existing);
+    existing.remove();
+  } else {
+    const w = document.createElement(tag);
+    try { range.surroundContents(w); }
+    catch { w.appendChild(range.extractContents()); range.insertNode(w); }
+  }
+  sel.removeAllRanges();
+}
+['#sp-modal-bold', '#sp-modal-hl', '#sp-modal-fmt-clear'].forEach(id =>
+  $(id).addEventListener('mousedown', e => e.preventDefault())
+);
+$('#sp-modal-bold').addEventListener('click', () => modalToggleWrap('b'));
+$('#sp-modal-hl').addEventListener('click', () => modalToggleWrap('mark'));
+$('#sp-modal-fmt-clear').addEventListener('click', () => {
+  const b = $('#sp-modal-body');
+  b.textContent = b.textContent;
+});
+
+// ========================================================
+// Support: interviewer file list + download
+// ========================================================
+let receivedFiles = [];
+
+function renderSupportFiles() {
+  const ul = $('#sp-file-list');
+  ul.innerHTML = '';
+  if (receivedFiles.length === 0) {
+    ul.innerHTML = '<li class="text-xs text-zinc-500 p-2">No files yet</li>';
+    return;
+  }
+  receivedFiles.forEach((f, i) => {
+    const li = document.createElement('li');
+    li.className = 'flex items-center gap-1.5 px-2 py-1.5 bg-zinc-950 rounded text-xs cursor-pointer hover:bg-zinc-800 transition';
+    li.title = 'Click to download';
+    const badge = document.createElement('span');
+    badge.className = 'px-1 py-0.5 bg-blue-900 rounded text-[9px] uppercase shrink-0';
+    badge.textContent = FILE_TYPE_LABELS[f.type] || f.type;
+    const name = document.createElement('span');
+    name.className = 'flex-1 truncate';
+    name.textContent = f.name;
+    li.appendChild(badge);
+    li.appendChild(name);
+    li.addEventListener('click', () => {
+      li.classList.add('opacity-50');
+      window.api.sendMessage({ type: 'request-file', index: i });
+    });
+    ul.appendChild(li);
+  });
+}
 
 // ========================================================
 // Incoming messages
 // ========================================================
-window.api.onChatMessage((msg) => {
+window.api.onChatMessage(async (msg) => {
   const log = role === 'interviewer' ? $('#iv-chat-log') : $('#sp-chat-log');
   const withDel = role === 'support';
 
@@ -461,6 +654,9 @@ window.api.onChatMessage((msg) => {
       badge.classList.remove('hidden');
       clearTimeout(badge._timer);
       badge._timer = setTimeout(() => badge.classList.add('hidden'), 3000);
+      if ($('#iv-grid').dataset.focus !== 'chat') {
+        showToast(msg.text, msg.html);
+      }
     }
   } else if (msg.type === 'edit') {
     const el = log.querySelector(`.msg[data-id="${msg.id}"] .msg-content`);
@@ -477,7 +673,48 @@ window.api.onChatMessage((msg) => {
     }
   } else if (msg.type === 'show-sticky') {
     if (role === 'interviewer') {
+      const idx = stickyNotes.findIndex(n => n.id === msg.note.id);
+      if (idx >= 0) currentStickyIdx = idx;
       window.api.showSticky(msg.note);
+    }
+  } else if (msg.type === 'hide-sticky') {
+    if (role === 'interviewer') window.api.hideSticky();
+  } else if (msg.type === 'sticky-add') {
+    if (role === 'interviewer') {
+      stickyNotes.push(msg.note);
+      renderStickyList();
+    }
+  } else if (msg.type === 'sticky-update') {
+    if (role === 'interviewer') {
+      const idx = stickyNotes.findIndex(n => n.id === msg.note.id);
+      if (idx >= 0) stickyNotes[idx] = msg.note;
+      else stickyNotes.push(msg.note);
+      renderStickyList();
+    }
+  } else if (msg.type === 'sticky-delete') {
+    if (role === 'interviewer') {
+      const idx = stickyNotes.findIndex(n => n.id === msg.id);
+      if (idx >= 0) stickyNotes.splice(idx, 1);
+      renderStickyList();
+    }
+  } else if (msg.type === 'file-list') {
+    if (role === 'support') {
+      receivedFiles = msg.files || [];
+      renderSupportFiles();
+    }
+  } else if (msg.type === 'request-file') {
+    if (role === 'interviewer') {
+      const f = uploadedFiles[msg.index];
+      if (!f) return;
+      const res = await window.api.readFile(f.path);
+      if (res.ok) {
+        window.api.sendMessage({ type: 'file-data', name: f.name, data: res.data });
+      }
+    }
+  } else if (msg.type === 'file-data') {
+    if (role === 'support') {
+      await window.api.saveFile({ name: msg.name, data: msg.data });
+      renderSupportFiles();
     }
   }
 });
@@ -493,8 +730,14 @@ window.api.onPeerStatus((s) => {
     el.classList.toggle('on', connected);
     el.classList.toggle('off', !connected);
 
-    if (connected && stickyNotes.length > 0) {
-      window.api.sendMessage({ type: 'sticky-list', notes: stickyNotes });
+    if (connected) {
+      if (stickyNotes.length > 0)
+        window.api.sendMessage({ type: 'sticky-list', notes: stickyNotes });
+      if (uploadedFiles.length > 0)
+        window.api.sendMessage({
+          type: 'file-list',
+          files: uploadedFiles.map(f => ({ name: f.name, type: f.type }))
+        });
     }
   } else if (role === 'support') {
     const el = $('#sp-status');
@@ -509,17 +752,19 @@ window.api.onPeerStatus((s) => {
 // ========================================================
 window.api.onHotkeyAction((a) => {
   if (a.action === 'focusPanel') {
-    if (role === 'interviewer') {
-      $('#iv-grid').dataset.focus = a.panel;
-    }
+    if (role === 'interviewer') setIvFocus(a.panel);
     return;
   }
   if (a.action === 'toggleSticky') {
-    // Sticky window doesn't exist yet — open with current/first note
-    if (role === 'interviewer' && stickyNotes.length > 0) {
-      const note = stickyNotes[currentStickyIdx % stickyNotes.length];
-      window.api.showSticky(note);
-    }
+    if (role === 'interviewer' && stickyNotes.length > 0) showStickyAt(currentStickyIdx);
+    return;
+  }
+  if (a.action === 'navSticky') {
+    if (role === 'interviewer') showStickyAt(currentStickyIdx + a.dir);
+    return;
+  }
+  if (a.action === 'captureArea') {
+    if (role === 'interviewer') doCapture();
     return;
   }
   if (a.action !== 'helpRequest') return;

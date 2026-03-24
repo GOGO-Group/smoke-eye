@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-src *; connect-src *;">
+        content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-src *; connect-src *;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Interview Support</title>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -41,11 +41,20 @@
         </div>
 
         <div>
-          <label class="block text-xs text-zinc-400 mb-1">Upload Files (CV, Job Description, Support Material…)</label>
-          <button id="file-add-btn"
-                  class="w-full px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-md text-sm hover:bg-zinc-700 transition">
-            + Add File
-          </button>
+          <label class="block text-xs text-zinc-400 mb-1">Upload Files</label>
+          <div class="flex gap-2">
+            <select id="file-type"
+                    class="w-36 px-2 py-2 bg-zinc-950 border border-zinc-600 rounded-md text-sm">
+              <option value="cv">CV</option>
+              <option value="job-description">Job Description</option>
+              <option value="support-material">Support Material</option>
+              <option value="other">Other</option>
+            </select>
+            <button id="file-add-btn"
+                    class="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-md text-sm hover:bg-zinc-700 transition">
+              + Add File
+            </button>
+          </div>
           <ul id="file-list" class="mt-2 space-y-1 max-h-36 overflow-y-auto"></ul>
         </div>
 
@@ -101,6 +110,8 @@
       <span class="font-semibold">Interviewer</span>
       <button id="iv-sticky-btn" title="Show sticky notes"
               class="px-2 py-1 border border-zinc-600 rounded hover:bg-zinc-700 text-sm">&#128204;</button>
+      <button id="iv-capture-btn" title="Capture screen area to clipboard"
+              class="px-2 py-1 border border-zinc-600 rounded hover:bg-zinc-700 text-sm">&#9986;</button>
       <span id="iv-status" class="status off ml-auto flex items-center gap-1 text-xs px-2 py-1 rounded" title="Connection status">
         <span class="status-icon">&#128279;</span>
         <span class="status-text hidden sm:inline">Listening &mdash; waiting&hellip;</span>
@@ -142,6 +153,14 @@
         </div>
       </div>
     </div>
+
+    <!-- Toast for incoming support messages -->
+    <div id="iv-toast" class="hidden fixed bottom-4 right-4 max-w-xs bg-zinc-800 border border-amber-500 rounded-lg shadow-2xl p-3 z-40 cursor-pointer">
+      <div class="flex items-center gap-2 text-xs text-amber-400 font-semibold mb-1">
+        <span>&#128172;</span><span>Support says</span>
+      </div>
+      <div id="iv-toast-body" class="text-sm leading-snug break-words max-h-24 overflow-hidden"></div>
+    </div>
   </section>
 
   <!-- ========== Support ========== -->
@@ -175,23 +194,46 @@
         </div>
       </div>
 
-      <div class="w-full md:w-56 shrink-0 bg-zinc-800 border border-zinc-700 rounded-lg flex flex-col overflow-hidden max-h-48 md:max-h-none">
-        <h3 class="m-0 px-3 py-2 text-sm font-semibold bg-zinc-700 border-b border-zinc-600">Sticky Notes</h3>
-        <ul id="sp-sticky-list" class="flex-1 overflow-y-auto p-2 space-y-1">
-          <li class="sp-sticky-empty text-xs text-zinc-500 p-2">No sticky notes yet</li>
-        </ul>
+      <div class="w-full md:w-56 shrink-0 flex flex-col gap-2 max-h-96 md:max-h-none">
+        <div class="bg-zinc-800 border border-zinc-700 rounded-lg flex flex-col overflow-hidden flex-1 min-h-[120px]">
+          <h3 class="m-0 px-3 py-2 text-sm font-semibold bg-zinc-700 border-b border-zinc-600 flex items-center justify-between">
+            Sticky Notes
+            <button id="sp-sticky-add" title="Add new sticky"
+                    class="w-6 h-6 bg-amber-500 hover:bg-amber-600 text-black rounded font-bold leading-none">+</button>
+          </h3>
+          <ul id="sp-sticky-list" class="flex-1 overflow-y-auto p-2 space-y-1">
+            <li class="sp-sticky-empty text-xs text-zinc-500 p-2">No sticky notes yet</li>
+          </ul>
+        </div>
+
+        <div class="bg-zinc-800 border border-zinc-700 rounded-lg flex flex-col overflow-hidden flex-1 min-h-[120px]">
+          <h3 class="m-0 px-3 py-2 text-sm font-semibold bg-zinc-700 border-b border-zinc-600">Files</h3>
+          <ul id="sp-file-list" class="flex-1 overflow-y-auto p-2 space-y-1">
+            <li class="text-xs text-zinc-500 p-2">No files yet</li>
+          </ul>
+        </div>
       </div>
     </div>
 
     <!-- Sticky note detail modal -->
     <div id="sp-sticky-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-zinc-800 border border-zinc-700 rounded-xl w-full max-w-md shadow-2xl">
-        <div class="flex items-center justify-between px-4 py-3 border-b border-zinc-700 font-bold">
-          <span id="sp-modal-title"></span>
+        <div class="flex items-center justify-between px-4 py-3 border-b border-zinc-700 gap-2">
+          <input id="sp-modal-title" type="text" placeholder="Title"
+                 class="flex-1 bg-transparent border-0 font-bold outline-none focus:bg-zinc-900 rounded px-1" />
           <button id="sp-modal-close" class="text-zinc-400 hover:text-zinc-200 text-xl leading-none">&times;</button>
         </div>
-        <div id="sp-modal-body" class="p-4 text-sm leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto"></div>
+        <div class="flex items-center gap-1 px-4 py-2 border-b border-zinc-700 text-xs">
+          <button id="sp-modal-bold" title="Bold" class="w-7 h-7 border border-zinc-600 bg-zinc-900 rounded hover:bg-zinc-700"><b>B</b></button>
+          <button id="sp-modal-hl" title="Highlight" class="w-7 h-7 border border-zinc-600 bg-zinc-900 rounded hover:bg-zinc-700"><mark class="px-0.5">H</mark></button>
+          <button id="sp-modal-fmt-clear" title="Clear format" class="px-2 h-7 border border-zinc-600 bg-zinc-900 rounded hover:bg-zinc-700">Clear</button>
+          <span class="flex-1"></span>
+          <button id="sp-modal-save" class="px-3 h-7 bg-blue-600 hover:bg-blue-700 rounded">Save</button>
+        </div>
+        <div id="sp-modal-body" contenteditable="true"
+             class="rich-input p-4 text-sm leading-relaxed max-h-64 overflow-y-auto outline-none min-h-[6rem]"></div>
         <div class="px-4 py-3 border-t border-zinc-700 flex justify-end gap-2">
+          <button id="sp-modal-delete" class="px-4 py-2 bg-red-900 hover:bg-red-800 rounded text-sm mr-auto">Delete</button>
           <button id="sp-modal-close2" class="px-4 py-2 border border-zinc-600 rounded hover:bg-zinc-700 text-sm">Close</button>
           <button id="sp-modal-show" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded text-sm">Show to Interviewer</button>
         </div>
@@ -235,6 +277,12 @@
             <input class="hk w-44 px-2 py-1.5 bg-zinc-950 border border-zinc-600 rounded font-mono text-xs text-center cursor-pointer" data-hk="focusChat" readonly /></label>
           <label class="flex items-center justify-between gap-3 text-sm">Toggle Sticky Note
             <input class="hk w-44 px-2 py-1.5 bg-zinc-950 border border-zinc-600 rounded font-mono text-xs text-center cursor-pointer" data-hk="toggleSticky" readonly /></label>
+          <label class="flex items-center justify-between gap-3 text-sm">Previous Sticky
+            <input class="hk w-44 px-2 py-1.5 bg-zinc-950 border border-zinc-600 rounded font-mono text-xs text-center cursor-pointer" data-hk="stickyPrev" readonly /></label>
+          <label class="flex items-center justify-between gap-3 text-sm">Next Sticky
+            <input class="hk w-44 px-2 py-1.5 bg-zinc-950 border border-zinc-600 rounded font-mono text-xs text-center cursor-pointer" data-hk="stickyNext" readonly /></label>
+          <label class="flex items-center justify-between gap-3 text-sm">Capture Screen Area
+            <input class="hk w-44 px-2 py-1.5 bg-zinc-950 border border-zinc-600 rounded font-mono text-xs text-center cursor-pointer" data-hk="captureArea" readonly /></label>
         </div>
       </div>
 
