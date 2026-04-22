@@ -4,9 +4,9 @@
   "description": "Electron app for interviewer and support roles",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && cross-env VITE_DEV=1 electron .\"",
-    "build": "vite build",
-    "start": "npm run build && electron .",
+    "dev": "node init && concurrently -k \"vite\" \"wait-on tcp:5173 && cross-env VITE_DEV=1 electron .\"",
+    "build": "node init && vite build",
+    "start": "node init && npm run build && electron .",
     "dist": "npm run build && electron-builder --win --config electron-builder.json"
   },
   "dependencies": {

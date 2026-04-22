@@ -6,15 +6,23 @@ import '@fontsource/roboto/400.css';
 import '@fontsource/roboto/500.css';
 import '@fontsource/roboto/700.css';
 
-import theme from './theme';
+import { createAppTheme } from './theme';
 import App from './App';
-import { AppProvider } from './context/AppContext';
+import { AppProvider, useApp } from './context/AppContext';
+
+function ThemedApp() {
+  const { themeMode } = useApp();
+  const theme = React.useMemo(() => createAppTheme(themeMode), [themeMode]);
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <App />
+    </ThemeProvider>
+  );
+}
 
 createRoot(document.getElementById('root')).render(
-  <ThemeProvider theme={theme}>
-    <CssBaseline />
-    <AppProvider>
-      <App />
-    </AppProvider>
-  </ThemeProvider>
+  <AppProvider>
+    <ThemedApp />
+  </AppProvider>
 );

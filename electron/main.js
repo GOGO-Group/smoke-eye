@@ -55,6 +55,7 @@ const defaultSettings = {
   },
   sizes: { mobile: { w: 420, h: 780 }, tablet: { w: 900, h: 700 } },
   webpages: ["https://example.com", "https://developer.mozilla.org"],
+  themeMode: "dark",
 };
 
 let settings = loadSettings();
@@ -69,6 +70,7 @@ function loadSettings() {
       webpages: Array.isArray(parsed.webpages)
         ? parsed.webpages
         : defaultSettings.webpages,
+      themeMode: parsed.themeMode === 'light' ? 'light' : 'dark',
     };
   } catch {
     return JSON.parse(JSON.stringify(defaultSettings));
@@ -109,6 +111,7 @@ function createWindow() {
   loadRenderer(mainWindow, "index.html");
 
   mainWindow.setContentProtection(true);
+  mainWindow.setAlwaysOnTop(true, "screen-saver");
 
   mainWindow.on("maximize", () =>
     mainWindow.webContents.send("win-state", { maximized: true }),
@@ -197,11 +200,7 @@ function showSticky(note) {
 }
 
 function updateStickyContent(note) {
-  if (
-    !stickyWindow ||
-    stickyWindow.isDestroyed() ||
-    !stickyWindow.isVisible()
-  )
+  if (!stickyWindow || stickyWindow.isDestroyed() || !stickyWindow.isVisible())
     return;
   if (note.id && note.id === currentStickyNoteId) {
     stickyWindow.webContents.send("sticky-data", note);
@@ -357,6 +356,7 @@ ipcMain.handle("set-settings", (_e, next) => {
   if (next.hotkeys) settings.hotkeys = { ...settings.hotkeys, ...next.hotkeys };
   if (next.sizes) settings.sizes = { ...settings.sizes, ...next.sizes };
   if (Array.isArray(next.webpages)) settings.webpages = next.webpages;
+  if (next.themeMode === 'light' || next.themeMode === 'dark') settings.themeMode = next.themeMode;
   saveSettings();
   registerHotkeys();
   return settings;

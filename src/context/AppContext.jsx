@@ -9,6 +9,7 @@ export function AppProvider({ children }) {
   const [role, setRole] = useState(null);
   const [connected, setConnected] = useState(false);
   const [settings, setSettings] = useState({ hotkeys: {}, webpages: [] });
+  const [themeMode, setThemeMode] = useState('dark');
 
   // interviewer state
   const [stickyNotes, setStickyNotes] = useState([]);
@@ -59,7 +60,10 @@ export function AppProvider({ children }) {
 
   // ---------- init ----------
   useEffect(() => {
-    window.api.getSettings().then(setSettings);
+    window.api.getSettings().then(s => {
+      setSettings(s);
+      if (s.themeMode) setThemeMode(s.themeMode);
+    });
 
     window.api.onPeerStatus((s) => setConnected(!!s.connected));
 
@@ -140,7 +144,14 @@ export function AppProvider({ children }) {
   const saveSettings = async (next) => {
     const s = await window.api.setSettings(next);
     setSettings(s);
+    if (s.themeMode) setThemeMode(s.themeMode);
     return s;
+  };
+
+  const toggleTheme = async () => {
+    const next = themeMode === 'dark' ? 'light' : 'dark';
+    setThemeMode(next);
+    await window.api.setSettings({ themeMode: next });
   };
 
   const value = {
@@ -152,7 +163,8 @@ export function AppProvider({ children }) {
     receivedStickies, setReceivedStickies, receivedFiles,
     shownStickyId, setShownStickyId,
     sendMsg, sendRaw, showStickyAt, doCapture,
-    currentStickyIdx
+    currentStickyIdx,
+    themeMode, toggleTheme,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

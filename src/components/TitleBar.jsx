@@ -5,7 +5,10 @@ import CropSquareIcon from "@mui/icons-material/CropSquare";
 import FilterNoneIcon from "@mui/icons-material/FilterNone";
 import CloseIcon from "@mui/icons-material/Close";
 import ShieldIcon from "@mui/icons-material/Shield";
+import Brightness4Icon from "@mui/icons-material/Brightness4";
+import Brightness7Icon from "@mui/icons-material/Brightness7";
 import OpacitySlider from "./OpacitySlider";
+import { useApp } from "../context/AppContext";
 
 const drag = { WebkitAppRegion: "drag" };
 const noDrag = { WebkitAppRegion: "no-drag" };
@@ -14,6 +17,7 @@ export default function TitleBar({ title = "Interview Support", children }) {
   const [maximized, setMaximized] = useState(false);
   const [shielded, setShielded] = useState(true);
   const [confirmClose, setConfirmClose] = useState(false);
+  const { themeMode, toggleTheme } = useApp();
 
   useEffect(() => {
     window.api.winIsMaximized().then(setMaximized);
@@ -54,6 +58,14 @@ export default function TitleBar({ title = "Interview Support", children }) {
       <Box sx={{ ...noDrag, display: "flex", alignItems: "center" }}>
         <OpacitySlider />
       </Box>
+
+      <Tooltip title={themeMode === 'dark' ? "Switch to Day mode" : "Switch to Night mode"}>
+        <IconButton size="small" onClick={toggleTheme} sx={{ ...noDrag, mr: 0.5 }}>
+          {themeMode === 'dark'
+            ? <Brightness7Icon sx={{ fontSize: 16, color: 'text.secondary' }} />
+            : <Brightness4Icon sx={{ fontSize: 16, color: 'text.secondary' }} />}
+        </IconButton>
+      </Tooltip>
 
       <Tooltip title={shielded ? "Protection ON" : "Protection OFF"}>
         <IconButton
