@@ -1,0 +1,263 @@
+:root {
+  --accent: #37e3c3;
+  --text: #e7ecf5;
+  --glass: rgba(18, 21, 27, 0.97);   /* near-opaque: desktop must not bleed
+                                        through (backdrop-filter can't blur the
+                                        desktop behind a transparent window) */
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  background: transparent;            /* only drawn pixels show */
+  overflow: hidden;
+  color: var(--text);
+  font-family: "Bahnschrift", "Segoe UI Variable", "Segoe UI", sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#root {
+  position: relative;
+  width: fit-content;            /* window hugs the dial, no dead side-space */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#dial { display: block; }
+
+/* "More": a frosted-glass card. Detail panel sits to the LEFT of the icon
+   column, so it opens sideways rather than pushing the buttons down. */
+#more {
+  width: fit-content;            /* snug around the buttons, grows for panels */
+  margin-top: -12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  backdrop-filter: blur(20px) saturate(1.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55),
+              inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  animation: reveal 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+#more.hidden { display: none; }
+
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* "More" menu: a row of icon buttons, each revealing a control panel */
+#more-menu { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+#more-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(231, 236, 245, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 11px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+}
+#more-menu button:hover {
+  background: rgba(55, 227, 195, 0.14);
+  border-color: rgba(55, 227, 195, 0.42);
+  color: #fff;
+  transform: translateY(-1px);
+}
+#more-menu button:active { transform: translateY(0); }
+#more-menu button.open,
+#more-menu button.on {
+  background: rgba(55, 227, 195, 0.18);
+  border-color: rgba(55, 227, 195, 0.55);
+  color: var(--accent);
+}
+
+/* dynamic plugin launch buttons, separated from the fixed icons by a divider */
+#plugin-menu {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+#plugin-menu:empty { display: none; }       /* no divider when no plugins */
+
+/* a control panel revealed to the LEFT of the icon column */
+.panel {
+  margin-right: 10px;            /* gap to the icon column (only when shown) */
+  animation: reveal 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* ID specificity: must beat #opacity-panel{display:flex} so hiding wins */
+#more .panel.hidden { display: none; }
+
+/* opacity control: a VERTICAL slider with the % below it */
+#opacity-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 10px;
+  letter-spacing: 0.4px;
+}
+#proc-panel { width: 184px; }
+
+/* plugin action panel (Start / Settings / Stop for the clicked plugin) */
+#plugin-panel { display: flex; flex-direction: column; gap: 7px; width: 150px; padding: 4px; }
+#pp-name {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.3px;
+  color: var(--accent);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  padding: 2px 2px 0;
+}
+#pp-info { font-size: 9px; color: rgba(231, 236, 245, 0.45); padding: 0 2px 4px; min-height: 11px; }
+.pp-btn {
+  width: 100%; text-align: left;
+  background: rgba(255, 255, 255, 0.05); color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 9px;
+  padding: 8px 11px; font: inherit; font-size: 12px; letter-spacing: 0.4px;
+  cursor: pointer; transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+.pp-btn:hover { background: rgba(55, 227, 195, 0.14); border-color: rgba(55, 227, 195, 0.42); }
+.pp-btn:disabled { opacity: 0.35; cursor: default; background: rgba(255, 255, 255, 0.04);
+                   border-color: rgba(255, 255, 255, 0.06); }
+#opacity-val { color: var(--accent); }
+#opacity {
+  -webkit-appearance: none;
+  appearance: none;
+  writing-mode: vertical-lr;      /* vertical track (Chromium 124+) */
+  direction: rtl;                 /* low at bottom, high at top */
+  width: 5px;
+  height: 124px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.14);
+  outline: none;
+}
+#opacity::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #0d1714;
+  box-shadow: 0 0 6px rgba(55, 227, 195, 0.6);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+#opacity::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+#filter {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.26);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 9px;
+  padding: 7px 11px;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+#filter:focus {
+  border-color: rgba(55, 227, 195, 0.55);
+  box-shadow: 0 0 0 3px rgba(55, 227, 195, 0.13);
+}
+#filter::placeholder { color: rgba(231, 236, 245, 0.34); }
+
+#proclist {
+  list-style: none;
+  height: 168px;
+  overflow-y: auto;
+  margin: 9px 0;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 10px;
+  font-family: "Cascadia Code", "Consolas", monospace;
+  font-size: 11px;
+}
+#proclist li {
+  padding: 4px 8px;
+  border-radius: 7px;
+  white-space: nowrap;
+  cursor: pointer;
+  color: rgba(231, 236, 245, 0.76);
+  transition: background 0.12s, color 0.12s;
+}
+#proclist li:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+#proclist li.flagged { color: var(--accent); }          /* has a flag set */
+#proclist li .flagtag {
+  float: right;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  opacity: 0.85;
+  margin-left: 8px;
+}
+#proclist li.sel {
+  background: linear-gradient(90deg, rgba(55, 227, 195, 0.92), rgba(55, 227, 195, 0.55));
+  color: #04211c;
+  font-weight: 600;
+}
+#proclist li.sel .flagtag { color: #04211c; }           /* readable when selected */
+
+#settings { display: flex; gap: 6px; }
+#settings button {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  padding: 7px 0;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.15s, border-color 0.15s;
+}
+#settings button:hover {
+  background: rgba(55, 227, 195, 0.14);
+  border-color: rgba(55, 227, 195, 0.42);
+  transform: translateY(-1px);
+}
+#settings button:active { transform: translateY(0); }
+
+#proclist::-webkit-scrollbar { width: 8px; }
+#proclist::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+#proclist::-webkit-scrollbar-thumb:hover { background: rgba(55, 227, 195, 0.45); }
+
+/* error toast: shows why an action (e.g. Safe) failed */
+#toast {
+  position: absolute;
+  top: 118px;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  max-width: 196px;
+  padding: 5px 10px;
+  background: rgba(26, 18, 20, 0.92);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 95, 95, 0.45);
+  border-radius: 9px;
+  color: #ffd9d9;
+  font-size: 10px;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 10;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
