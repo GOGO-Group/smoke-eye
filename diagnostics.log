@@ -1,0 +1,99 @@
+[2026-07-12T21:27:32.399Z] settings.pointerdown: close
+[2026-07-12T21:27:32.495Z] settings.click: close
+[2026-07-12T21:28:11.925Z] settings.pointerdown: close
+[2026-07-12T21:28:12.046Z] settings.click: close
+[2026-07-12T21:28:14.830Z] main.settings.closed
+[2026-07-12T21:28:18.037Z] main.createWindow: bounds={"x":1706,"y":397}
+[2026-07-12T21:28:21.279Z] main.openSettings: create new
+[2026-07-12T21:28:21.333Z] settings.init: renderer loaded
+[2026-07-12T21:28:22.703Z] settings.pointerdown: close
+[2026-07-12T21:28:22.807Z] settings.click: close
+[2026-07-12T21:28:22.807Z] main.settings.close.ipc: closing window
+[2026-07-12T21:28:22.812Z] main.settings.closed
+[2026-07-12T21:28:28.615Z] main.openSettings: create new
+[2026-07-12T21:28:28.670Z] settings.init: renderer loaded
+[2026-07-12T21:28:44.535Z] settings.pointerdown: quit
+[2026-07-12T21:28:44.623Z] settings.click: quit
+[2026-07-12T21:28:44.623Z] main.settings.close.ipc: closing window
+[2026-07-12T21:28:44.628Z] main.settings.closed
+[2026-07-12T21:28:49.959Z] move.keydown: Ctrl+Alt+ArrowDown
+[2026-07-12T21:28:49.959Z] move.request: hwnd=396118 dx=0 dy=1 step=10
+[2026-07-12T21:28:49.960Z] native.move.request: hwnd=396118 dx=0 dy=10
+[2026-07-12T21:28:49.965Z] native.move.result: ok=true msg=Window moved by 0, 10
+[2026-07-12T21:28:49.966Z] move.result: ok=undefined msg=
+[2026-07-12T21:28:50.151Z] move.keydown: Ctrl+Alt+ArrowDown
+[2026-07-12T21:28:50.151Z] move.request: hwnd=396118 dx=0 dy=1 step=10
+[2026-07-12T21:28:50.152Z] native.move.request: hwnd=396118 dx=0 dy=10
+[2026-07-12T21:28:50.271Z] move.keydown: Ctrl+Alt+ArrowDown
+[2026-07-12T21:28:50.272Z] move.request: hwnd=396118 dx=0 dy=1 step=10
+[2026-07-12T21:28:50.407Z] move.keydown: Ctrl+Alt+ArrowUp
+[2026-07-12T21:28:50.407Z] move.request: hwnd=396118 dx=0 dy=-1 step=10
+[2026-07-12T21:28:50.526Z] native.move.result: ok=true msg=Window moved by 0, 10
+[2026-07-12T21:28:50.527Z] native.move.request: hwnd=396118 dx=0 dy=10
+[2026-07-12T21:28:50.527Z] move.result: ok=undefined msg=
+[2026-07-12T21:28:50.530Z] native.move.result: ok=true msg=Window moved by 0, 10
+[2026-07-12T21:28:50.531Z] native.move.request: hwnd=396118 dx=0 dy=-10
+[2026-07-12T21:28:50.531Z] move.result: ok=undefined msg=
+[2026-07-12T21:28:50.538Z] native.move.result: ok=true msg=Window moved by 0, -10
+[2026-07-12T21:28:50.539Z] move.result: ok=undefined msg=
+[2026-07-12T21:28:50.680Z] move.keydown: Ctrl+Alt+ArrowLeft
+[2026-07-12T21:28:50.681Z] move.request: hwnd=396118 dx=-1 dy=0 step=10
+[2026-07-12T21:28:50.681Z] native.move.request: hwnd=396118 dx=-10 dy=0
+[2026-07-12T21:28:50.684Z] native.move.result: ok=true msg=Window moved by -10, 0
+[2026-07-12T21:28:50.684Z] move.result: ok=undefined msg=
+[2026-07-12T21:28:50.882Z] move.keydown: Ctrl+Alt+ArrowLeft
+[2026-07-12T21:28:50.883Z] move.request: hwnd=396118 dx=-1 dy=0 step=10
+[2026-07-12T21:28:50.883Z] native.move.request: hwnd=396118 dx=-10 dy=0
+[2026-07-12T21:28:50.899Z] native.move.result: ok=true msg=Window moved by -10, 0
+[2026-07-12T21:28:50.899Z] move.result: ok=undefined msg=
+[2026-07-12T21:28:51.071Z] move.keydown: Ctrl+Alt+ArrowUp
+[2026-07-12T21:28:51.071Z] move.request: hwnd=396118 dx=0 dy=-1 step=10
+[2026-07-12T21:28:51.072Z] native.move.request: hwnd=396118 dx=0 dy=-10
+[2026-07-12T21:28:51.074Z] native.move.result: ok=true msg=Window moved by 0, -10
+[2026-07-12T21:28:51.075Z] move.result: ok=undefined msg=
+[2026-07-12T21:28:51.198Z] move.keydown: Ctrl+Alt+ArrowRight
+[2026-07-12T21:28:51.198Z] move.request: hwnd=396118 dx=1 dy=0 step=10
+[2026-07-12T21:28:51.198Z] native.move.request: hwnd=396118 dx=10 dy=0
+[2026-07-12T21:28:51.205Z] native.move.result: ok=true msg=Window moved by 10, 0
+[2026-07-12T21:28:51.205Z] move.result: ok=undefined msg=
+[2026-07-12T21:28:51.369Z] move.keydown: Ctrl+Alt+ArrowLeft
+[2026-07-12T21:28:51.369Z] move.request: hwnd=396118 dx=-1 dy=0 step=10
+[2026-07-12T21:28:51.369Z] native.move.request: hwnd=396118 dx=-10 dy=0
+[2026-07-12T21:28:51.512Z] move.keydown: Ctrl+Alt+ArrowRight
+[2026-07-12T21:28:51.512Z] move.request: hwnd=396118 dx=1 dy=0 step=10
+[2026-07-12T21:28:51.614Z] native.move.result: ok=true msg=Window moved by -10, 0
+[2026-07-12T21:28:51.614Z] native.move.request: hwnd=396118 dx=10 dy=0
+[2026-07-12T21:28:51.615Z] move.result: ok=undefined msg=
+[2026-07-12T21:28:51.617Z] native.move.result: ok=true msg=Window moved by 10, 0
+[2026-07-12T21:28:51.617Z] move.result: ok=undefined msg=
+[2026-07-12T21:28:51.620Z] move.keydown: Ctrl+Alt+ArrowLeft
+[2026-07-12T21:28:51.620Z] move.request: hwnd=396118 dx=-1 dy=0 step=10
+[2026-07-12T21:28:51.621Z] native.move.request: hwnd=396118 dx=-10 dy=0
+[2026-07-12T21:28:51.625Z] native.move.result: ok=true msg=Window moved by -10, 0
+[2026-07-12T21:28:51.626Z] move.result: ok=undefined msg=
+[2026-07-12T21:28:51.651Z] move.keydown: Ctrl+Alt+ArrowDown
+[2026-07-12T21:28:51.652Z] move.request: hwnd=396118 dx=0 dy=1 step=10
+[2026-07-12T21:28:51.652Z] native.move.request: hwnd=396118 dx=0 dy=10
+[2026-07-12T21:28:51.672Z] native.move.result: ok=true msg=Window moved by 0, 10
+[2026-07-12T21:28:51.673Z] move.result: ok=undefined msg=
+[2026-07-12T21:28:51.716Z] move.keydown: Ctrl+Alt+ArrowRight
+[2026-07-12T21:28:51.717Z] move.request: hwnd=396118 dx=1 dy=0 step=10
+[2026-07-12T21:28:51.717Z] native.move.request: hwnd=396118 dx=10 dy=0
+[2026-07-12T21:28:51.733Z] native.move.result: ok=true msg=Window moved by 10, 0
+[2026-07-12T21:28:51.734Z] move.result: ok=undefined msg=
+[2026-07-12T21:28:51.857Z] move.keydown: Ctrl+Alt+ArrowUp
+[2026-07-12T21:28:51.857Z] move.request: hwnd=396118 dx=0 dy=-1 step=10
+[2026-07-12T21:28:51.858Z] native.move.request: hwnd=396118 dx=0 dy=-10
+[2026-07-12T21:28:51.883Z] native.move.result: ok=true msg=Window moved by 0, -10
+[2026-07-12T21:28:51.883Z] move.result: ok=undefined msg=
+[2026-07-12T21:28:51.982Z] move.keydown: Ctrl+Alt+ArrowLeft
+[2026-07-12T21:28:51.983Z] move.request: hwnd=396118 dx=-1 dy=0 step=10
+[2026-07-12T21:28:51.983Z] native.move.request: hwnd=396118 dx=-10 dy=0
+[2026-07-12T21:28:52.135Z] native.move.result: ok=true msg=Window moved by -10, 0
+[2026-07-12T21:28:52.136Z] move.result: ok=undefined msg=
+[2026-07-12T21:29:11.783Z] main.openSettings: create new
+[2026-07-12T21:29:11.839Z] settings.init: renderer loaded
+[2026-07-12T21:29:13.399Z] settings.pointerdown: close
+[2026-07-12T21:29:13.503Z] settings.click: close
+[2026-07-12T21:29:13.503Z] main.settings.close.ipc: closing window
+[2026-07-12T21:29:13.511Z] main.settings.closed

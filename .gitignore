@@ -3,3 +3,7 @@ node_modules/
 # build output
 dist/
 build/icon.ico
+
+# bundled 32-bit helper runtime (fetched via `npm run setup-x86`)
+vendor/
+config.bat

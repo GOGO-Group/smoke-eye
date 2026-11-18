@@ -16,11 +16,13 @@ function setFlag(req) {
   else if (flag === "through") r = wc.setClickThrough(hwnd, !!value);
   else if (flag === "opacity") r = wc.setAlpha(hwnd, parseInt(value, 10));
   else if (flag === "safe") {
-    wc.setTaskbarHidden(hwnd, !!value);                 // H first
-    r = wc.setCaptureProtect(hwnd, !!value);            // P last
+    wc.setTaskbarHidden(hwnd, !!value); // H first
+    r = wc.setCaptureProtect(hwnd, !!value); // P last
   } else if (flag === "restore") {
-    wc.setTopmost(hwnd, false); wc.setCaptureProtect(hwnd, false);
-    wc.setTaskbarHidden(hwnd, false); wc.setClickThrough(hwnd, false);
+    wc.setTopmost(hwnd, false);
+    wc.setCaptureProtect(hwnd, false);
+    wc.setTaskbarHidden(hwnd, false);
+    wc.setClickThrough(hwnd, false);
     wc.setAlpha(hwnd, 255);
     r = [true, "restored"];
   } else r = [false, `unknown flag ${flag}`];
@@ -30,21 +32,35 @@ function setFlag(req) {
 function dispatch(req) {
   const cmd = req.cmd;
   if (cmd === "pick" || cmd === "pick_cursor") {
-    const { x, y } = cmd === "pick_cursor" ? wc.cursorPos() : { x: req.x, y: req.y };
+    const { x, y } =
+      cmd === "pick_cursor" ? wc.cursorPos() : { x: req.x, y: req.y };
     const r = wc.pidFromPoint(x, y);
-    if (r.hwnd && num(r.hwnd) === req.exclude) return { pid: null, hwnd: null, title: "" };
+    if (r.hwnd && num(r.hwnd) === req.exclude)
+      return { pid: null, hwnd: null, title: "" };
     return { pid: r.pid, hwnd: num(r.hwnd), title: r.title };
   }
   if (cmd === "main_window") return { hwnd: num(wc.mainWindow(req.pid)) };
   if (cmd === "flags") return { flags: wc.windowFlags(req.hwnd) };
   if (cmd === "alpha") return { alpha: wc.getAlpha(req.hwnd) };
   if (cmd === "is_window") return { alive: wc.isWindow(req.hwnd) };
+  if (cmd === "move") return wc.moveWindow(req.hwnd, req.dx, req.dy);
   if (cmd === "list") {
     const needle = (req.needle || "").toLowerCase();
     const fmap = wc.flagsMap();
     const procs = listProcesses()
-      .filter((p) => !needle || p.name.toLowerCase().includes(needle) || String(p.pid).includes(needle))
-      .map((p) => ({ pid: p.pid, name: p.name, flags: fmap[p.pid] || "" }));
+      .filter(
+        (p) =>
+          !needle ||
+          p.name.toLowerCase().includes(needle) ||
+          String(p.pid).includes(needle),
+      )
+      .map((p) => ({ pid: p.pid, name: p.name, flags: fmap[p.pid] || "" }))
+      .sort((a, b) => {
+        const af = a.flags ? 1 : 0;
+        const bf = b.flags ? 1 : 0;
+        if (af !== bf) return bf - af;
+        return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+      });
     return { procs };
   }
   if (cmd === "set") return setFlag(req);

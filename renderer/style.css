@@ -1,15 +1,25 @@
 :root {
   --accent: #37e3c3;
   --text: #e7ecf5;
-  --glass: rgba(18, 21, 27, 0.97);   /* near-opaque: desktop must not bleed
+  --glass: rgba(
+    18,
+    21,
+    27,
+    0.97
+  ); /* near-opaque: desktop must not bleed
                                         through (backdrop-filter can't blur the
                                         desktop behind a transparent window) */
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
-html, body {
-  background: transparent;            /* only drawn pixels show */
+html,
+body {
+  background: transparent; /* only drawn pixels show */
   overflow: hidden;
   color: var(--text);
   font-family: "Bahnschrift", "Segoe UI Variable", "Segoe UI", sans-serif;
@@ -19,18 +29,20 @@ html, body {
 
 #root {
   position: relative;
-  width: fit-content;            /* window hugs the dial, no dead side-space */
+  width: fit-content; /* window hugs the dial, no dead side-space */
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-#dial { display: block; }
+#dial {
+  display: block;
+}
 
 /* "More": a frosted-glass card. Detail panel sits to the LEFT of the icon
    column, so it opens sideways rather than pushing the buttons down. */
 #more {
-  width: fit-content;            /* snug around the buttons, grows for panels */
+  width: fit-content; /* snug around the buttons, grows for panels */
   margin-top: -12px;
   padding: 10px;
   display: flex;
@@ -41,19 +53,33 @@ html, body {
   backdrop-filter: blur(20px) saturate(1.35);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55),
-              inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
   animation: reveal 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-#more.hidden { display: none; }
+#more.hidden {
+  display: none;
+}
 
 @keyframes reveal {
-  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
-  to   { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* "More" menu: a row of icon buttons, each revealing a control panel */
-#more-menu { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+#more-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
 #more-menu button {
   display: flex;
   align-items: center;
@@ -65,7 +91,11 @@ html, body {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 11px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s,
+    transform 0.1s;
 }
 #more-menu button:hover {
   background: rgba(55, 227, 195, 0.14);
@@ -73,7 +103,9 @@ html, body {
   color: #fff;
   transform: translateY(-1px);
 }
-#more-menu button:active { transform: translateY(0); }
+#more-menu button:active {
+  transform: translateY(0);
+}
 #more-menu button.open,
 #more-menu button.on {
   background: rgba(55, 227, 195, 0.18);
@@ -83,18 +115,26 @@ html, body {
 
 /* dynamic plugin launch buttons, separated from the fixed icons by a divider */
 #plugin-menu {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
-#plugin-menu:empty { display: none; }       /* no divider when no plugins */
+#plugin-menu:empty {
+  display: none;
+} /* no divider when no plugins */
 
 /* a control panel revealed to the LEFT of the icon column */
 .panel {
-  margin-right: 10px;            /* gap to the icon column (only when shown) */
+  margin-right: 10px; /* gap to the icon column (only when shown) */
   animation: reveal 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 /* ID specificity: must beat #opacity-panel{display:flex} so hiding wins */
-#more .panel.hidden { display: none; }
+#more .panel.hidden {
+  display: none;
+}
 
 /* opacity control: a VERTICAL slider with the % below it */
 #opacity-panel {
@@ -106,33 +146,89 @@ html, body {
   font-size: 10px;
   letter-spacing: 0.4px;
 }
-#proc-panel { width: 184px; }
+#proc-panel {
+  position: absolute;
+  z-index: 25;
+  width: 360px;
+  padding: 12px 14px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  backdrop-filter: blur(20px) saturate(1.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.55);
+}
+#proc-panel.hidden {
+  display: none;
+}
+#proc-panel .proc-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: rgba(231, 236, 245, 0.55);
+  margin-bottom: 8px;
+}
 
 /* plugin action panel (Start / Settings / Stop for the clicked plugin) */
-#plugin-panel { display: flex; flex-direction: column; gap: 7px; width: 150px; padding: 4px; }
+#plugin-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 150px;
+  padding: 4px;
+}
 #pp-name {
-  font-size: 12px; font-weight: 600; letter-spacing: 0.3px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
   color: var(--accent);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding: 2px 2px 0;
 }
-#pp-info { font-size: 9px; color: rgba(231, 236, 245, 0.45); padding: 0 2px 4px; min-height: 11px; }
-.pp-btn {
-  width: 100%; text-align: left;
-  background: rgba(255, 255, 255, 0.05); color: var(--text);
-  border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 9px;
-  padding: 8px 11px; font: inherit; font-size: 12px; letter-spacing: 0.4px;
-  cursor: pointer; transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+#pp-info {
+  font-size: 9px;
+  color: rgba(231, 236, 245, 0.45);
+  padding: 0 2px 4px;
+  min-height: 11px;
 }
-.pp-btn:hover { background: rgba(55, 227, 195, 0.14); border-color: rgba(55, 227, 195, 0.42); }
-.pp-btn:disabled { opacity: 0.35; cursor: default; background: rgba(255, 255, 255, 0.04);
-                   border-color: rgba(255, 255, 255, 0.06); }
-#opacity-val { color: var(--accent); }
+.pp-btn {
+  width: 100%;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  padding: 8px 11px;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    opacity 0.15s;
+}
+.pp-btn:hover {
+  background: rgba(55, 227, 195, 0.14);
+  border-color: rgba(55, 227, 195, 0.42);
+}
+.pp-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+#opacity-val {
+  color: var(--accent);
+}
 #opacity {
   -webkit-appearance: none;
   appearance: none;
-  writing-mode: vertical-lr;      /* vertical track (Chromium 124+) */
-  direction: rtl;                 /* low at bottom, high at top */
+  writing-mode: vertical-lr; /* vertical track (Chromium 124+) */
+  direction: rtl; /* low at bottom, high at top */
   width: 5px;
   height: 124px;
   border-radius: 3px;
@@ -151,7 +247,9 @@ html, body {
   cursor: pointer;
   transition: transform 0.1s;
 }
-#opacity::-webkit-slider-thumb:hover { transform: scale(1.15); }
+#opacity::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
 
 #filter {
   width: 100%;
@@ -164,52 +262,83 @@ html, body {
   font-size: 12px;
   letter-spacing: 0.4px;
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 #filter:focus {
   border-color: rgba(55, 227, 195, 0.55);
   box-shadow: 0 0 0 3px rgba(55, 227, 195, 0.13);
 }
-#filter::placeholder { color: rgba(231, 236, 245, 0.34); }
+#filter::placeholder {
+  color: rgba(231, 236, 245, 0.34);
+}
 
 #proclist {
   list-style: none;
-  height: 168px;
+  height: 380px;
   overflow-y: auto;
-  margin: 9px 0;
-  padding: 4px;
+  margin: 10px 0;
+  padding: 6px;
   background: rgba(0, 0, 0, 0.22);
   border-radius: 10px;
   font-family: "Cascadia Code", "Consolas", monospace;
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.35;
 }
 #proclist li {
-  padding: 4px 8px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 10px;
   border-radius: 7px;
   white-space: nowrap;
   cursor: pointer;
   color: rgba(231, 236, 245, 0.76);
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 }
-#proclist li:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
-#proclist li.flagged { color: var(--accent); }          /* has a flag set */
-#proclist li .flagtag {
-  float: right;
-  font-size: 9px;
+#proclist li .flag-col {
+  flex: 0 0 34px;
+  font-size: 10px;
   letter-spacing: 0.5px;
   color: var(--accent);
   opacity: 0.85;
-  margin-left: 8px;
 }
+#proclist li:not(.flagged) .flag-col {
+  opacity: 0;
+}
+#proclist li .proc-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#proclist li:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+#proclist li.flagged {
+  color: var(--accent);
+} /* has a flag set */
 #proclist li.sel {
-  background: linear-gradient(90deg, rgba(55, 227, 195, 0.92), rgba(55, 227, 195, 0.55));
+  background: linear-gradient(
+    90deg,
+    rgba(55, 227, 195, 0.92),
+    rgba(55, 227, 195, 0.55)
+  );
   color: #04211c;
   font-weight: 600;
 }
-#proclist li.sel .flagtag { color: #04211c; }           /* readable when selected */
+#proclist li.sel .flag-col {
+  color: #04211c;
+  opacity: 1;
+} /* readable when selected */
 
-#settings { display: flex; gap: 6px; }
-#settings button {
+#proc-actions {
+  display: flex;
+  gap: 6px;
+}
+#proc-actions button {
   flex: 1;
   background: rgba(255, 255, 255, 0.05);
   color: var(--text);
@@ -221,21 +350,68 @@ html, body {
   letter-spacing: 0.6px;
   text-transform: uppercase;
   cursor: pointer;
-  transition: transform 0.1s, background 0.15s, border-color 0.15s;
+  transition:
+    transform 0.1s,
+    background 0.15s,
+    border-color 0.15s;
 }
 #settings button:hover {
   background: rgba(55, 227, 195, 0.14);
   border-color: rgba(55, 227, 195, 0.42);
   transform: translateY(-1px);
 }
-#settings button:active { transform: translateY(0); }
+#settings button:active {
+  transform: translateY(0);
+}
 
-#proclist::-webkit-scrollbar { width: 8px; }
+#context-menu {
+  position: absolute;
+  min-width: 122px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: rgba(18, 21, 27, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.55);
+  z-index: 20;
+}
+#context-menu.hidden {
+  display: none;
+}
+#context-menu button {
+  width: 100%;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  text-align: left;
+  cursor: pointer;
+}
+#context-menu button:hover {
+  background: rgba(55, 227, 195, 0.14);
+  border-color: rgba(55, 227, 195, 0.42);
+}
+#context-menu button.danger:hover {
+  background: rgba(255, 95, 95, 0.16);
+  border-color: rgba(255, 95, 95, 0.45);
+}
+
+#proclist::-webkit-scrollbar {
+  width: 8px;
+}
 #proclist::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.12);
   border-radius: 4px;
 }
-#proclist::-webkit-scrollbar-thumb:hover { background: rgba(55, 227, 195, 0.45); }
+#proclist::-webkit-scrollbar-thumb:hover {
+  background: rgba(55, 227, 195, 0.45);
+}
 
 /* error toast: shows why an action (e.g. Safe) failed */
 #toast {
@@ -257,7 +433,12 @@ html, body {
   white-space: normal;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.2s, transform 0.2s;
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
   z-index: 10;
 }
-#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

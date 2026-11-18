@@ -5,7 +5,8 @@
   "main": "main.js",
   "author": "ProcessC",
   "scripts": {
-    "start": "electron .",
+    "start": "node init && node scripts/start.js",
+    "setup-x86": "node scripts/setup-x86.js",
     "dist": "electron-builder --win",
     "pack": "electron-builder --win --dir"
   },
@@ -25,20 +26,27 @@
       "preload.js",
       "settings-preload.js",
       "renderer/**/*",
-      "native/**/*"
+      "native/**/*",
+      "node_modules/@koromix/koffi-win32-ia32/**/*"
     ],
     "asarUnpack": [
       "node_modules/koffi/**",
-      "node_modules/@koromix/**"
+      "node_modules/@koromix/**",
+      "native/**"
     ],
     "extraResources": [
       {
         "from": "build/icon.ico",
         "to": "icon.ico"
+      },
+      {
+        "from": "vendor/node32",
+        "to": "node32"
       }
     ],
     "win": {
       "icon": "build/icon.ico",
+      "requestedExecutionLevel": "requireAdministrator",
       "target": [
         {
           "target": "nsis",

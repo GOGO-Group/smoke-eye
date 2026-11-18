@@ -7,7 +7,11 @@ contextBridge.exposeInMainWorld("settings", {
   setProtect: (v) => ipcRenderer.send("settings:setProtect", v),
   setTop: (v) => ipcRenderer.send("settings:setTop", v),
   setOpacity: (v) => ipcRenderer.send("settings:setOpacity", v),
-  setHotkey: (action, accel) => ipcRenderer.invoke("settings:setHotkey", { action, accel }),
+  setMoveTargetKey: (v) => ipcRenderer.send("settings:setMoveTargetKey", v),
+  setMoveAppKey: (v) => ipcRenderer.send("settings:setMoveAppKey", v),
+  setMoveStep: (v) => ipcRenderer.send("settings:setMoveStep", v),
+  setHotkey: (action, accel) =>
+    ipcRenderer.invoke("settings:setHotkey", { action, accel }),
   close: () => ipcRenderer.send("settings:close"),
   quit: () => ipcRenderer.send("quit"),
 });

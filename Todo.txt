@@ -1,0 +1,4 @@
+[x] On context menu, put process list
+[x] In process list, put flag set processes at top of that - show setting flag on first column
+[x] on more pane, remove move selected window button and pane for that
+[x] remove logging part through whole codebase.

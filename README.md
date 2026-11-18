@@ -1,38 +1,58 @@
 # Floating Controller (Electron)
 
-An Electron version of the round pie-controller. The UI is HTML/Canvas (true
-anti-aliased round window, native transparency); all Win32 window control is
-delegated to the existing Python `windowctl` via a small JSON-over-stdio bridge.
+Electron-based window controller with a canvas dial UI and native Win32 window
+control.
+
+## Project Layout
 
 ```
-electron/
-  main.js            Electron main: spawns the bridge, creates the window, IPC
-  preload.js         contextBridge -> window.api
-  bridge.py          Python backend wrapping ../windowctl.py + ../processes.py
-  renderer/          the dial UI (index.html, style.css, renderer.js)
+main.js              Electron main process
+preload.js           controller window bridge
+settings-preload.js   settings window bridge
+renderer/            dial UI and settings UI
+native/              Win32 backend and persistence helpers
+license-generator/   standalone signed-license generator
 ```
 
 ## Run
 
-Requires **Node.js**, **Python**, and `psutil` (`pip install psutil`) — the
-bridge imports `windowctl.py`/`processes.py` from the parent folder.
-
-```
-cd electron
+```bash
 npm install
+npm run setup-x86   # fetches the 32-bit helper (koffi ia32 + node x86) — see below
 npm start
 ```
 
+### 32-bit (WOW64) window support
+
+The app is a 64-bit build. Applying **Safe** (capture protection) to a *64-bit*
+window is done in-process. For a *32-bit* window — e.g. VMware Workstation's
+`vmware.exe` — a 64-bit process can't inject native code directly, so the work
+is delegated to a bundled 32-bit `node` that injects an x86 stub calling the
+32-bit `SetWindowDisplayAffinity` (see `native/inject32.js`).
+
+`npm run setup-x86` downloads the two pieces this needs into `vendor/node32`
+(the 32-bit node runtime) and `node_modules/@koromix/koffi-win32-ia32` (the
+32-bit koffi prebuilt, which a normal `npm install` skips on an x64 host). Both
+are gitignored; `electron-builder` bundles them into the packaged app. Without
+this step, 32-bit targets report `32-bit helper runtime missing`.
+
+## License
+
+The Safe quadrant is disabled until a valid `license.json` exists in the app's
+user data folder. Generate one with the license generator project:
+
+```bash
+cd license-generator
+npm run generate -- --name "Customer Name" --out ../license.json --expires 2027-12-31
+```
+
+Copy the generated file to the app's user data folder as `license.json`.
+
 ## Use
 
-- **Center hub** — drag it onto any window to target it (Python reads the
-  physical cursor position, so it is DPI-correct).
-- **Quadrants** (after a target is picked): **Top** = always-on-top,
-  **Safe** = capture-protect (+taskbar hide), **Thru** = click-through.
-  Active flags tint their quadrant green.
-- **Click the hub** to show/hide the outer ring; collapsed it is just a circle.
-- **More** (bottom) — a filterable process list + Use / Refresh / Restore.
-- **Right-drag** the dial to move it; **Esc** to quit.
-
-Capture-protect on another app's window uses `windowctl`'s remote-thread
-injection, exactly like the desktop app.
+- **Center hub** — drag to target a window.
+- **Top / Safe / Thru** — target actions for the selected window.
+- **More** — opacity, process list, and move controls.
+- **Move settings** — configure a modifier chord for moving the controller and
+  a separate chord for nudging the selected window.
+- **Right click** — opens a context menu with Settings and Exit.

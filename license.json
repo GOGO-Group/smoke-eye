@@ -1,0 +1,10 @@
+{
+  "appId": "com.processc.floating-controller",
+  "issuedTo": "PIStar",
+  "issuedAt": "2026-11-11T07:12:00.538Z",
+  "expiresAt": "2027-12-31",
+  "features": [
+    "safe"
+  ],
+  "signature": "YFhtgUzW3pnMH/DjSAK9WwmlcI3gYLiSR8+CuBefZwgWQD9+H4BiXY1G19wXu6zVhmzW6fwKD3Ea+7XFtwgjsVJDMnYwV6nPIOvzbBAEEtAVRGGG15djL7O0u7du6CK2VfDsIhmKkLtHrSnJLmiuga3GKUs+0iK3uaCmDA0V6eYHEBf9CPx9JTaRdBbk5DF+cheX+d5ip4IZ+GaaSuQYw7qLg2T6jcl8Wn3USm/J+a6yPkJ41JqMHckM/l88HRriIQXbwGakkOntGSCtNCZkZAB+q0AOXCX3igPKLCaVkpBdia7MjaWsGwym+D5URIn3AQMpzxF0OLKZMftYNjKF8Q=="
+}

@@ -6,6 +6,10 @@ contextBridge.exposeInMainWorld("api", {
   cursorPos: () => ipcRenderer.invoke("cursorPos"),
   winPos: () => ipcRenderer.invoke("winPos"),
   ourHwnd: () => ipcRenderer.invoke("ourHwnd"),
+  getSettings: () => ipcRenderer.invoke("settings:get"),
+  onSettingsChanged: (cb) =>
+    ipcRenderer.on("settings:changed", (_e, value) => cb(value)),
+  licenseStatus: () => ipcRenderer.invoke("license:get"),
   setWinPos: (x, y) => ipcRenderer.send("setWinPos", { x, y }),
   resize: (w, h) => ipcRenderer.send("resize", { w, h }),
   ignoreMouse: (ignore) => ipcRenderer.send("ignoreMouse", ignore),
